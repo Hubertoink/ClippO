@@ -11,7 +11,12 @@ function Get-Archive($name,$url,$hash) {
   }
   $target = Join-Path $cache "$name.extracted"
   New-Item -ItemType Directory -Force $target | Out-Null
-  & tar.exe -xf $archive -C $target
+  $sevenZip = Get-Command 7z.exe -ErrorAction SilentlyContinue
+  if ($name.EndsWith('.7z') -and $sevenZip) {
+    & $sevenZip.Source x -y "-o$target" $archive | Out-Null
+  } else {
+    & tar.exe -xf $archive -C $target
+  }
   if ($LASTEXITCODE -ne 0) { throw "Could not extract $name" }
   return $target
 }
