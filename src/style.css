@@ -1248,3 +1248,23 @@ footer {
 :root[data-native="true"] .image-editor:has(.resize-preview) {
   gap: 6px;
 }
+.update-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 5px 12px;
+  border-bottom: 1px solid var(--edge);
+  background: var(--field);
+  font-size: 11px;
+}
+.update-notice > svg, .update-notice b { color: var(--accent); }
+.update-notice span { flex: 1; }
+.update-action {
+  padding: 5px 8px;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  background: var(--field);
+  font-weight: 600;
+}
+.update-later { padding: 5px; color: var(--muted); }

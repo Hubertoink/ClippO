@@ -11,6 +11,25 @@ use tauri::{
 };
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
+#[tauri::command]
+fn portable_build() -> bool {
+    std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.join("clippo-portable").is_file()))
+        .unwrap_or(false)
+}
+
+#[tauri::command]
+fn open_portable_release(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    app.opener()
+        .open_url(
+            "https://github.com/Hubertoink/ClippO/releases/latest",
+            None::<&str>,
+        )
+        .map_err(|e| e.to_string())
+}
+
 fn main() {
     tauri::Builder::default()
         .manage(jobs::Session::default())
@@ -26,6 +45,7 @@ fn main() {
                 })
                 .build(),
         )
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
@@ -75,6 +95,8 @@ fn main() {
             _ => (),
         })
         .invoke_handler(tauri::generate_handler![
+            portable_build,
+            open_portable_release,
             jobs::file_size,
             jobs::image_dimensions,
             jobs::compress_file,

@@ -67,6 +67,20 @@ Vor dem Ersetzen vergleicht ClippO den aktuellen Dateiinhalt mit dem eingelesene
 
 Die Oberfläche speichert ihre Einstellungen im lokalen WebView2-Profil. Fertige Dateien liegen im App-Cache, damit Explorer, Outlook und Teams sie nach dem Kopieren noch lesen können. Für eingefügte Bilder wird auch der Eingabestand aufbewahrt, damit das Größenlimit nachträglich auf denselben Screenshot angewendet werden kann. Beim Start werden Ergebnisordner entfernt, die älter als 24 Stunden sind. Die eigentlichen Komprimierungsaufrufe benötigen keine Netzwerkverbindung.
 
+### Automatische Updates unter Windows
+
+ClippO prüft bei jedem App-Start im Hintergrund, ob auf GitHub eine neuere stabile Version vorliegt. Das Widget bleibt auch offline bedienbar. Über **Update laden** lädt ClippO den Installer und prüft seine Signatur. **Installieren** startet die Aktualisierung, sobald die laufende Komprimierung beendet ist. Mit **Später** schließt du den Hinweis für diese Sitzung. In der portablen Ausgabe führt **Zur ZIP** zur Release-Seite. Entpacke die neue ZIP nach dem Beenden der App. Wer eine Version vor 0.4.0 verwendet, installiert das erste Update einmal manuell. [Windows-Releases](https://github.com/Hubertoink/ClippO/releases/latest)
+
+Für ein signiertes x64-Release braucht der Build den privaten Schlüssel zum öffentlichen Updater-Schlüssel in `src-tauri/tauri.conf.json`. Sichere den privaten Schlüssel getrennt vom Repository. Er wird auch für spätere Releases benötigt.
+
+```powershell
+$env:TAURI_SIGNING_PRIVATE_KEY = Join-Path $env:LOCALAPPDATA 'ClippO/signing/updater.key'
+.\scripts\desktop.ps1 build
+.\scripts\package-release.ps1 -Signed
+```
+
+Lade den Installer, seine `.sig`-Datei, die portable ZIP und `latest.json` aus `release/` gemeinsam in einen GitHub-Release-Entwurf hoch. Veröffentliche ihn unter dem Tag `v<Version>` als neuestes stabiles Release. Der manuelle GitHub-Actions-Build erzeugt dieselben Updater-Dateien, wenn der Signierschlüssel über das Actions-Secret `TAURI_SIGNING_PRIVATE_KEY` bereitsteht. [Tauri-Updater](https://v2.tauri.app/plugin/updater/)
+
 ### Grenzen
 
 - Das Eingabelimit für Dateien beträgt 256 MiB. Der lokale Bilddecoder prüft zusätzlich die Bildabmessungen. Sehr große Bilder, komplexe PDFs und aggressive Zielgrößen können mehrere Durchläufe erfordern.

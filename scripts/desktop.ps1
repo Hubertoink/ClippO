@@ -12,5 +12,8 @@ if ($vc) {
 }
 & "$PSScriptRoot\engines.ps1"
 if ($Action -in 'check','test') { cargo $Action --manifest-path src-tauri/Cargo.toml }
+elseif ($Action -eq 'build' -and $env:TAURI_SIGNING_PRIVATE_KEY) {
+  & "$root\node_modules\.bin\tauri.cmd" build --config src-tauri/tauri.signed.conf.json
+}
 else { & "$root\node_modules\.bin\tauri.cmd" $Action }
 exit $LASTEXITCODE

@@ -40,6 +40,7 @@ import { LogicalSize } from "@tauri-apps/api/dpi";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Button } from "./components/ui";
 import { ResizeDimensions } from "./components/ResizeDimensions";
+import { UpdateNotice } from "./components/UpdateNotice";
 import { Preferences } from "./components/Preferences";
 import {
   estimated,
@@ -132,6 +133,8 @@ export default function App() {
     action: "resize" | "convert";
     files: Input[];
   } | null>(null);
+  const [updateVisible, setUpdateVisible] = useState(false);
+  const installing = useRef(false);
   const [percent, setPercent] = useState(50);
   const [format, setFormat] = useState<Settings["output"]>("WebP");
   const queue = useRef<{ file: Input; options?: Partial<Settings> }[]>([]),
@@ -175,11 +178,12 @@ export default function App() {
         .setSize(
           new LogicalSize(
             420,
-            preferences ? 420 : shortcuts ? 300 : s.compact ? 236 : result && !busy ? 300 : 260,
+            (preferences ? 420 : shortcuts ? 300 : s.compact ? 236 : result && !busy ? 300 : 260) +
+              (updateVisible ? 46 : 0),
           ),
         )
         .catch(caught);
-  }, [preferences, s.compact, shortcuts, !!result, busy]);
+  }, [preferences, s.compact, shortcuts, !!result, busy, updateVisible]);
   useEffect(() => {
     if (!modeMenu) return;
     const outside = (e: PointerEvent) => {
@@ -189,6 +193,7 @@ export default function App() {
     return () => document.removeEventListener("pointerdown", outside);
   }, [modeMenu]);
   async function run(files: Input[], options?: Partial<Settings>) {
+    if (installing.current) return;
     setEdit(null);
     queue.current.push(...files.map((file) => ({ file, options })));
     setWaiting(queue.current.length);
@@ -652,6 +657,19 @@ export default function App() {
               )}
             </div>
           </header>
+          {native && (
+            <UpdateNotice
+              german={s.language === "de"}
+              busy={busy}
+              onVisible={setUpdateVisible}
+              beginInstall={() => {
+                if (locked.current || installing.current) return false;
+                installing.current = true;
+                return true;
+              }}
+              endInstall={() => { installing.current = false; }}
+            />
+          )}
           <input
             hidden
             type="file"

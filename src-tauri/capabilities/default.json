@@ -1,11 +1,16 @@
 {
   "identifier": "widget",
-  "windows": ["main"],
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging",
     "core:window:allow-hide",
     "core:window:allow-set-size",
-    "dialog:allow-open"
+    "dialog:allow-open",
+    "updater:allow-check",
+    "updater:allow-download",
+    "updater:allow-install"
   ]
 }

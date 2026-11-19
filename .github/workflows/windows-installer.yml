@@ -11,21 +11,25 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
-      - run: ./scripts/desktop.ps1 build
-      - run: cargo test --release --locked --manifest-path src-tauri/Cargo.toml
-      - name: Package portable app
-        shell: pwsh
+      - name: Build installer
+        id: compile
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          $version = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
-          New-Item -ItemType Directory -Path release/portable -Force | Out-Null
-          Copy-Item src-tauri/target/release/clippo.exe release/portable/
-          Copy-Item src-tauri/resources release/portable/resources -Recurse
-          Compress-Archive -Path release/portable/* -DestinationPath "release/ClippO_${version}_x64-portable.zip"
+          ./scripts/desktop.ps1 build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($env:TAURI_SIGNING_PRIVATE_KEY) { 'signed=true' >> $env:GITHUB_OUTPUT }
+      - run: cargo test --release --locked --manifest-path src-tauri/Cargo.toml
+      - name: Package release
+        run: ./scripts/package-release.ps1 -Signed:('${{ steps.compile.outputs.signed }}' -eq 'true')
       - uses: actions/upload-artifact@v4
         with:
           name: windows-x64-installer
           path: |
-            src-tauri/target/release/bundle/nsis/*-setup.exe
+            release/*-setup.exe
             release/*-portable.zip
+            release/*.sig
+            release/latest.json
           if-no-files-found: error
           compression-level: 0
