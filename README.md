@@ -1,125 +1,73 @@
 # ClippO
 
-Ein schwebendes Windows-Widget für Bilder, Screenshots und PDFs. Mit **Strg + Umschalt + O** anzeigen oder minimieren, eine Datei aus dem Explorer ablegen oder mit **Strg + V** einfügen. ClippO zeigt die tatsächliche Dateigröße und Ersparnis, sobald die lokale Verarbeitung abgeschlossen ist.
+English · [Deutsch](README.de.md)
 
-## Starten
+ClippO is a floating desktop widget for compressing screenshots, images and PDFs on Windows and Linux. Drop a file onto the widget or paste a screenshot with **Ctrl + V**. ClippO shows the original size, output size and savings. Files are processed locally.
 
-Den Windows-x64-Installer findest du unter [GitHub Releases](https://github.com/Hubertoink/ClippO/releases/latest). Ab Version 0.3.2 enthält das Setup kein WebView2-Installationspaket und installiert die Laufzeit nicht nach. Die Microsoft WebView2 Runtime muss bereits auf dem Rechner vorhanden sein; das gilt auch für die portable ZIP. Ein neuer Release-Build schreibt den Installer nach `src-tauri/target/release/bundle/nsis/`. Das Widget erscheint am Bildschirmrand. Schließen oder die Minus-Schaltfläche blendet es aus. Über das Tray-Symbol lässt es sich wieder öffnen oder vollständig beenden.
+## Install
 
-Für die Entwicklung werden Node.js 22.12 oder neuer, Rust mit MSVC-Toolchain, Visual Studio C++ Build Tools, das Windows SDK und WebView2 benötigt. Das Startskript lädt die festgelegten Codec-Versionen beim ersten Build herunter und prüft ihre SHA-256-Prüfsummen.
+Choose a package from [GitHub Releases](https://github.com/Hubertoink/ClippO/releases/latest).
 
-```powershell
-npm ci
-npm run desktop
-```
-
-| Befehl | Ergebnis |
-| --- | --- |
-| `npm run desktop:build` | Release-App und NSIS-Installer für den aktuellen Benutzer |
-| `npm run dev` | Lokale Browservorschau auf Port 1420 |
-| `npm run build` | TypeScript-Prüfung und Produktionsbuild des Frontends |
-| `powershell -ExecutionPolicy Bypass -File scripts/desktop.ps1 test` | Rust-Regressionstests für Dateiaustausch und wiederholtes Speichern |
-
-## Bedienung
-
-- **Ablegen und Einfügen.** Der Drop-Bereich zeigt eine Schätzung. Während der Verarbeitung aktualisiert der native Encoder die Anzeige mit gemessenen Größen. Bei mehreren Dateien lässt sich das gewünschte Ergebnis über den Dateinamen auswählen.
-- **Drop-Aktionen.** Beim Ziehen eines Bildes erscheinen drei Ziele. Komprimieren startet sofort. Größe ändern zeigt die ursprüngliche und die neue Breite × Höhe in Pixeln. Die Zielmaße folgen dem Prozentregler. Bei mehreren Bildern lässt sich die Vorschau pro Datei auswählen. Format ändern bietet JPEG, PNG und WebP an. Die Auswahl gilt für diesen Drop. Bei PDFs und gemischten Stapeln erscheint das Kompressionsziel.
-- **Modi.** Ausgewogen ist die Voreinstellung. Smart priorisiert Bildtreue und optimiert PNGs verlustfrei. Maximal senkt die Qualität stärker. Eigene öffnet die Regler für JPEG, WebP, PNG und PDF.
-- **Unter 1 MB bringen.** Das Ziel liegt bei höchstens 999.999 Byte. Nach jedem Durchlauf prüft ClippO die tatsächliche Größe. Bei Bedarf reduziert es Qualität und Bildabmessungen. Ein verfehltes Ziel wird im Ergebnis angezeigt.
-- **Speichern.** Eine neue Kopie landet neben dem Original. Für eingefügte Bilder ist der Downloadordner voreingestellt. Ein konfigurierter Auto-Speicherort speichert jede Ausgabe sofort. Bereits vorhandene Dateinamen erhalten einen Zähler. Ein Klick auf „Gespeichert in …“ öffnet den Zielordner im Explorer und markiert die gespeicherte Kopie.
-- **Ersetzen.** Die Aktion steht bei einer kleineren Ausgabe im selben Format zur Verfügung. Automatisches Ersetzen lässt sich ausdrücklich in den Einstellungen aktivieren.
-- **Schnellaktionen.** Eine Datei für Explorer oder E-Mail kopieren, ein Bild als Pixel in die Zwischenablage legen oder den Anhang im Explorer auswählen. Klassisches Outlook öffnet einen Entwurf mit Anhang. Beim neuen Outlook und bei Teams öffnet ClippO die Anwendung und legt die Datei zum Einfügen mit Strg + V bereit. Der Versand erfolgt in der Zielanwendung.
-- **Screenshot-Erkennung.** Änderungen an der Windows-Zwischenablage und neue Bilder im registrierten Screenshot-Ordner lösen einen kurzen Hinweis aus. Das Widget erscheint ohne Fokuswechsel. Automatische Komprimierung für kopierte Bilder ist separat aktivierbar.
-- **Darstellung.** Das normale Widget misst 420 × 260 logische Pixel. Einstellungen erhalten vorübergehend mehr Platz. Position, Sprache, Theme, Kompaktmodus und Animationseinstellungen bleiben beim Neustart erhalten.
-
-## Architektur
-
-```text
-Explorer / Dateiauswahl ──┐
-Windows-Zwischenablage ──┼── React-Widget ── Tauri IPC ── Rust-Worker
-Screenshot-Ordner ───────┘         ▲                        │
-                                  │                   private Arbeitskopie
-                                  │                        │
-                                  │                 Bild- oder PDF-Encoder
-                                  │                        │
-                                  └──── Ergebnis-ID, Größen und Fortschritt
-                                                 │
-                                      Kopieren / Speichern / Ersetzen
-```
-
-| Bereich | Implementierung | Verantwortung |
+| Platform | Download | How to start |
 | --- | --- | --- |
-| Oberfläche | `src/App.tsx`, `src/components` | React und TypeScript, Tailwind, angepasste shadcn/ui-Bedienelemente mit Radix Switch, Motion, deutsche und englische Texte. Die Eingaben werden in einer Warteschlange verarbeitet. |
-| Desktop-Lebenszyklus | `src-tauri/src/main.rs`, `desktop.rs` | Eine Tauri-Instanz, Acrylic-Fenster, nativer Tray, globales Tastenkürzel, Position innerhalb des Monitor-Arbeitsbereichs. |
-| Erkennung | `desktop.rs` | Windows-Sequenznummer der Zwischenablage, Erkennung verfügbarer Bildformate und `notify` für den über die Known-Folder-API ermittelten Screenshot-Ordner. Datei-Ereignisse werden bis zu einer stabilen Größe zusammengefasst. |
-| Dateiaufträge | `jobs.rs` | Arbeitskopie, Encoder auf einem Hintergrundthread, tatsächliche Bytezahlen, Ergebnis-IDs, Speicherziele und Windows-Aktionen. Der Renderer erhält für native Dateien keine vollständigen Bilddaten. |
-| Bilder | `engine.rs` | image-rs für Dekodierung und Ausrichtung, mozjpeg, libwebp und oxipng. Das mitgelieferte ImageMagick übernimmt Palettenoptimierung, Metadatenverarbeitung, HEIC-Eingabe und AVIF. |
-| PDFs | `engine.rs` | lopdf verarbeitet die Dokumentstruktur. qpdf entfernt ungenutzte Ressourcen, optimiert Streams und linearisiert die Ausgabe. Ein lokal vorhandenes Ghostscript übernimmt bei einfachen PDFs zusätzlich DPI-basiertes Downsampling und Font-Subsetting. |
-| Lokale Browservorschau | `src/lib/browser.ts` | Canvas, UPNG, HEIC-Dekodierung und pdf-lib. Speichern erfolgt als Download. Windows-Tray, systemweite Erkennung, Originalersetzung und die vollständige PDF-Pipeline gehören zur Desktop-App. |
+| Windows x64 | `*-setup.exe` | Run the installer for your Windows account. |
+| Windows x64, portable | `*-portable.zip` | Extract the whole archive and run `clippo.exe` next to `resources`. |
+| Ubuntu 24.04 LTS, x86-64 | `*_amd64.deb` | In the download folder, run `sudo apt install ./ClippO_0.5.0_amd64.deb`. Open **ClippO** from the application menu. |
 
-### Daten und Dateiintegrität
+Both Windows editions require the Microsoft Edge WebView2 Runtime. On Ubuntu, APT installs the runtime dependencies, including WebKitGTK, ImageMagick, qpdf and Ghostscript.
 
-Eine Größenangabe vor dem Drop ist eine formatunabhängige Näherung anhand des Modus. Bei einem Größenlimit begrenzt das Ziel die Vorschau. Das Ergebnis verwendet die gemessene Ausgabedatei.
+ClippO starts in German on German-language systems and in English elsewhere. Choose **Preferences → General → Language → English** to switch immediately. In German, choose **Einstellungen → Allgemein → Sprache → English**. Your selection is saved for the next launch.
 
-Bei gleichem Format behält ClippO die kleinere der beiden Versionen. Das kann bei bereits optimierten Dateien 0 % Ersparnis ergeben. Eine ausdrücklich gewählte Formatkonvertierung kann eine größere Datei erzeugen. HEIC-Eingaben werden standardmäßig als WebP ausgegeben. Das Original bleibt bei einer Formatänderung erhalten.
+## Use the widget
 
-Vor dem Ersetzen vergleicht ClippO den aktuellen Dateiinhalt mit dem eingelesenen Stand. Während des Vergleichs und Austauschs hält es einen Handle, der parallele Schreibzugriffe ausschließt. Es schreibt die Ausgabe zuerst auf demselben Laufwerk und ruft anschließend `ReplaceFileW` auf. Bei einem von Windows gemeldeten unvollständigen Austausch bleibt eine vorhandene Wiederherstellungskopie am angezeigten Pfad erhalten.
+- Press **Ctrl + Shift + O** to show or hide ClippO. **Ctrl + O** opens a file picker. The tray menu can reopen or quit the app.
+- Drop a PNG, JPEG, WebP, AVIF, HEIC or PDF to compress it. When dropping images, you can also resize or convert them. The resize preview shows the original and target width and height for each image.
+- Choose **Balanced**, **Smart**, **Maximum** or **Custom**. Enable **Under 1 MB** to target 999,999 bytes. ClippO reports the actual output size when it finishes.
+- Save a copy next to the original, set an auto-save folder or copy the result to the clipboard. Click **Saved to** to open the file manager. You can replace the original when the output is smaller and has the same format.
+- On Windows, ClippO can detect clipboard screenshots, prepare an Outlook draft and copy a file for Teams. On Linux, paste a clipboard image or a copied file with **Ctrl + V**. Folder detection watches the **Screenshots** subfolder in your Pictures directory.
+- Linux window positioning, global shortcuts, clipboard access and tray visibility depend on the desktop session. If the shortcut is unavailable, launch ClippO again from the application menu to show the existing window.
 
-Die Oberfläche speichert ihre Einstellungen im lokalen WebView2-Profil. Fertige Dateien liegen im App-Cache, damit Explorer, Outlook und Teams sie nach dem Kopieren noch lesen können. Für eingefügte Bilder wird auch der Eingabestand aufbewahrt, damit das Größenlimit nachträglich auf denselben Screenshot angewendet werden kann. Beim Start werden Ergebnisordner entfernt, die älter als 24 Stunden sind. Die eigentlichen Komprimierungsaufrufe benötigen keine Netzwerkverbindung.
+## Updates
 
-### Automatische Updates unter Windows
+ClippO checks for a newer stable release on startup. Choose **Download** to fetch and verify the signed update, then **Install** when your compression job is finished. On Ubuntu, approve the package installation and restart ClippO when prompted. **Later** dismisses the notice until the next launch. Portable Windows builds link to the release ZIP. Windows versions before 0.4.0 need one manual upgrade.
 
-ClippO prüft bei jedem App-Start im Hintergrund, ob auf GitHub eine neuere stabile Version vorliegt. Das Widget bleibt auch offline bedienbar. Über **Update laden** lädt ClippO den Installer und prüft seine Signatur. **Installieren** startet die Aktualisierung, sobald die laufende Komprimierung beendet ist. Mit **Später** schließt du den Hinweis für diese Sitzung. In der portablen Ausgabe führt **Zur ZIP** zur Release-Seite. Entpacke die neue ZIP nach dem Beenden der App. Wer eine Version vor 0.4.0 verwendet, installiert das erste Update einmal manuell. [Windows-Releases](https://github.com/Hubertoink/ClippO/releases/latest)
+## Build from source
 
-Für ein signiertes x64-Release braucht der Build den privaten Schlüssel zum öffentlichen Updater-Schlüssel in `src-tauri/tauri.conf.json`. Sichere den privaten Schlüssel getrennt vom Repository. Er wird auch für spätere Releases benötigt.
+ClippO uses Rust, Tauri 2, React and TypeScript. Frontend development requires Node.js 22.12 or newer. Run `npm ci` first.
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start the browser preview. |
+| `npm run build` | Type-check and build the frontend. |
+| `npm run desktop` / `npm run desktop:build` | Run or package the Windows app with MSVC, Visual Studio C++ Build Tools and the Windows SDK. The script downloads checksum-verified Windows codecs. |
+| `npm run tauri -- dev` / `npm run tauri -- build --bundles deb` | Run or package the native Ubuntu app. Install the build dependencies listed in the [Linux workflow](.github/workflows/linux-package.yml). |
+| `cargo test --locked --manifest-path src-tauri/Cargo.toml` | Test resizing, original-file replacement and conflict-free copy names. On Windows, `scripts/desktop.ps1 test` also configures the build environment. |
+
+The Linux workflow builds the Debian package, installs it with APT and starts the packaged widget on a virtual X11 display. It pastes a PNG and a PDF and checks the generated files.
+
+### Publish updates
+
+Build the Windows installer with `TAURI_SIGNING_PRIVATE_KEY` pointing to the private key matching the public key in `src-tauri/tauri.conf.json`. Keep a secure backup of that key. Download the tested Linux package into `release/` and sign it with the same key. From PowerShell in the project directory:
 
 ```powershell
-$env:TAURI_SIGNING_PRIVATE_KEY = Join-Path $env:LOCALAPPDATA 'ClippO/signing/updater.key'
+$version = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+$keyPath = Join-Path $env:LOCALAPPDATA 'ClippO/signing/updater.key'
+$env:TAURI_SIGNING_PRIVATE_KEY = $keyPath
 .\scripts\desktop.ps1 build
-.\scripts\package-release.ps1 -Signed
+$env:TAURI_SIGNING_PRIVATE_KEY = $null
+$deb = "release/ClippO_${version}_amd64.deb"
+npm exec -- tauri signer sign -f $keyPath --app-version $version $deb
+.\scripts\package-release.ps1 -Signed -LinuxPackage $deb
 ```
 
-Lade den Installer, seine `.sig`-Datei, die portable ZIP und `latest.json` aus `release/` gemeinsam in einen GitHub-Release-Entwurf hoch. Veröffentliche ihn unter dem Tag `v<Version>` als neuestes stabiles Release. Der manuelle GitHub-Actions-Build erzeugt dieselben Updater-Dateien, wenn der Signierschlüssel über das Actions-Secret `TAURI_SIGNING_PRIVATE_KEY` bereitsteht. [Tauri-Updater](https://v2.tauri.app/plugin/updater/)
+Publish the installer, portable ZIP, Debian package, both detached signatures and the combined `latest.json` in one release tagged `v<version>`. Mark the release as latest once all six assets are present. [Tauri updater](https://v2.tauri.app/plugin/updater/)
 
-### Grenzen
+## Implementation
 
-- Das Eingabelimit für Dateien beträgt 256 MiB. Der lokale Bilddecoder prüft zusätzlich die Bildabmessungen. Sehr große Bilder, komplexe PDFs und aggressive Zielgrößen können mehrere Durchläufe erfordern.
-- Bei Formularen, Annotationen und bestimmten erweiterten PDF-Strukturen nutzt ClippO den strukturerhaltenden Pfad. Das Subsetting eingebetteter Fonts benötigt Ghostscript. Signierte oder gesperrte PDFs melden einen Fehler.
-- Im Browser hängt die Clipboard-Freigabe vom Browser ab. Ctrl + V funktioniert auch über das normale Einfügeereignis. Bestehende Bildmetadaten können in der Windows-App erhalten werden.
-- Zum globalen Anzeigen und Minimieren verwendet diese Version Strg + Umschalt + O. Bei einem Tastenkonflikt zeigt sie einen Hinweis auf das Tray-Symbol. MP4, GIF und MOV sind Erweiterungspunkte.
+The React widget sends file paths to background Rust workers. Each job works on a private copy. Image processing uses image-rs, mozjpeg, oxipng, libwebp and ImageMagick. The PDF pipeline uses lopdf and qpdf, with Ghostscript for downsampling suitable documents. Signed and encrypted PDFs are rejected. Already optimized files may show 0% savings. The input limit is 256 MiB per file.
 
-### Prüfung unter Windows
+New copies receive a unique name. Before replacing an original, ClippO checks its contents against the input used for compression. Temporary results stay in the app cache for clipboard and attachment actions. Startup cleanup removes result directories older than 24 hours.
 
-Im lokalen Release-Test verarbeitete die native App PNG, JPG/JPEG, WebP, AVIF, HEIC und PDF. Ein 1.920 × 1.080 Pixel großer Test-Screenshot schrumpfte von 64.930 auf 6.203 Byte. In zwei Messungen bei geöffnetem Widget vergingen vom ausgelösten Drop-Ereignis bis zur ersten DOM-Aktualisierung 4,6 und 6,2 ms. Das Ergebnis erschien nach 283 beziehungsweise 188 ms.
+## License
 
-Ein PDF mit Bild und durchsuchbarem Text schrumpfte von 494.111 auf 63.417 Byte. Die Ausgabe ließ sich mit PDFium rendern, der Text blieb extrahierbar und qpdf bestätigte die Linearisierung. Weitere Prüfungen umfassten die Screenshot-Ordnererkennung ohne Fokuswechsel, das globale Tastenkürzel, die automatische Zwischenablageverarbeitung, das Datei-Kopierformat von Windows, wiederholtes Speichern und die Ablehnung einer zwischenzeitlich geänderten Originaldatei.
-
-Das getestete CMYK-Poster enthält CMYK-JPEGs mit separaten Transparenzmasken und einem Druckprofil. Ab Version 0.2.0 komprimiert der strukturerhaltende PDF-Pfad auch diese JPEGs. Bei Qualitätsstufe 72 sank die Größe von 12.157.162 auf 6.595.994 Byte. Der Vergleich prüfte gerenderte Seiten, extrahierten Text und das eingebettete Farbprofil.
-
-### Technische Referenzen
-
-Das Widget verwendet die Fenster-Effekte, Tray-APIs und Shortcut-Verwaltung von Tauri. [Tauri-Fenster](https://v2.tauri.app/reference/javascript/api/namespacewindow/) · [Globale Tastenkürzel](https://v2.tauri.app/plugin/global-shortcut/) · [Tray](https://v2.tauri.app/reference/javascript/api/namespacetray/)
-
-Die PDF-Ausgabe verwendet qpdfs Stream-Optimierung und Linearisierung. [qpdf-CLI](https://qpdf.readthedocs.io/en/stable/cli.html)
-
-Der Windows-Dateiaustausch nutzt die Semantik von ReplaceFileW für Berechtigungen, Datenströme und Wiederherstellungskopien. [Microsoft-Dokumentation](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-replacefilew)
-
-<details>
-<summary>Bildquellen und Generierungsangaben</summary>
-
-Der Desktop-Hintergrund `public/alpine-dusk.webp` und das Ablage-Icon `public/drop-tray.webp` wurden mit dem integrierten ImageGen-Werkzeug erstellt und lokal als WebP eingebunden.
-
-**Hintergrund**
-
-> Use case: photorealistic-natural. Create a premium widescreen desktop wallpaper, 16:9 landscape. Expansive alpine mountain ranges at dusk, hazy layers of slate blue, lavender and deep midnight indigo. A sculptural jagged ridge slopes up along the left edge, and dark fir tree silhouettes anchor the lower right. Far mountain peaks etched gently by pale apricot light on the horizon, a vast soft lavender cloudless sky above. Center calm for a floating dark app widget. Quiet photographic film grain, elegant, matte, atmospheric, real alpine photography. A restrained harmonious dusk palette, no lettering, logos, borders or interface.
-
-**Ablage-Icon**
-
-> A single beautifully crafted small 3D icon for a premium file compression utility. Isolated on fully transparent background. A thick glossy translucent periwinkle-purple inbox tray, open top, rounded squared silhouette with distinctive lowered U notch on its front lip. Two miniature physical rounded files float just above it: one light lavender image tile with a simple indigo mountain-and-sun relief on its face gently tilted counterclockwise, behind it one pearl lilac document sheet tilted clockwise with three embossed lines and a folded corner. Materials like frosted glass and matte enamel. Front three-quarter view from just above, gentle perspective, clear front-facing icon silhouette, compact arrangement. Soft studio light from upper left, crisp rim glints, deep violet shadows, premium macOS app-icon rendering, friendly, softly rounded, sculptural. Entire object centered and fully visible, no text, no letters, no UI, no typography, no stand, no pedestal, no square app tile behind it. Composition wide as it is tall. Generous clear margin.
-
-</details>
-
-
-## Lizenz
-
-Der ClippO-Quellcode steht unter der [MIT-Lizenz](LICENSE). Für die eingebundenen Bibliotheken, Schriftarten und Kompressionsprogramme gelten ihre jeweiligen Lizenzen.
+ClippO is released under the [MIT License](LICENSE). Its libraries, fonts and compression tools retain their respective licenses.
