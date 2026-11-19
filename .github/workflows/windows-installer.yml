@@ -11,7 +11,7 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
-      - run: npm run desktop:build
+      - run: ./scripts/desktop.ps1 build
       - run: cargo test --release --locked --manifest-path src-tauri/Cargo.toml
       - uses: actions/upload-artifact@v4
         with:
