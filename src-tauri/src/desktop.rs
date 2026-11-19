@@ -22,10 +22,7 @@ use windows_sys::Win32::{
         Com::CoTaskMemFree,
         DataExchange::{GetClipboardSequenceNumber, IsClipboardFormatAvailable},
     },
-    UI::{
-        Shell::{FOLDERID_Screenshots, SHGetKnownFolderPath},
-        WindowsAndMessaging::{ShowWindow, SW_SHOWNOACTIVATE},
-    },
+    UI::Shell::{FOLDERID_Screenshots, SHGetKnownFolderPath},
 };
 
 pub fn show(app: &AppHandle) {
@@ -126,13 +123,10 @@ fn capture(app: &AppHandle, path: Option<PathBuf>) {
     if let Some(win) = app.get_webview_window("main") {
         let hidden = !win.is_visible().unwrap_or(true);
         if hidden {
-            #[cfg(target_os = "linux")]
-            let _ = win.show();
-            #[cfg(windows)]
-            if let Ok(hwnd) = win.hwnd() {
-                unsafe {
-                    ShowWindow(hwnd.0 as _, SW_SHOWNOACTIVATE);
-                }
+            // The window is configured with focus=false so notification pops do
+            // not take focus. Use the runtime for both show and hide operations.
+            if win.show().is_err() {
+                return;
             }
         }
         let _ = app.emit(
@@ -298,10 +292,77 @@ pub fn widget_ready(app: AppHandle) -> AppResult<()> {
     state.ready.store(true, Ordering::Release);
     let win = app.get_webview_window("main").ok_or("Missing window")?;
     win.show().explain()?;
+    win.set_focus().explain()?;
     if state.shortcut_failed.load(Ordering::Relaxed) {
         return Err(
             "Global shortcut unavailable. Open ClippO from the application menu or tray.".into(),
         );
     }
     Ok(())
+}
+
+#[cfg(all(test, windows))]
+mod tests {
+    use super::*;
+    use windows_sys::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
+
+    fn check_capture_visibility(app: &AppHandle) -> AppResult<()> {
+        let win = app
+            .get_webview_window("main")
+            .ok_or("Missing test window")?;
+        let state = app.state::<Session>();
+        state.watching.store(true, Ordering::Relaxed);
+        state.ready.store(true, Ordering::Release);
+
+        for from_folder in [false, true] {
+            capture(app, from_folder.then(|| PathBuf::from("Screenshot.png")));
+            if !win.is_visible().explain()? {
+                return Err("Screenshot did not show the hidden widget".into());
+            }
+            if unsafe { GetForegroundWindow() } == win.hwnd().explain()?.0 {
+                return Err("Screenshot took focus".into());
+            }
+            if from_folder {
+                toggle(app); // global shortcut handler
+            } else {
+                win.hide().explain()?; // same window API as the minus button
+            }
+            if win.is_visible().explain()? {
+                return Err("Widget stayed visible after dismissing the screenshot".into());
+            }
+        }
+        toggle(app);
+        if !win.is_visible().explain()? {
+            return Err("Shortcut did not reopen the widget".into());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn screenshot_popup_can_be_hidden_by_button_and_shortcut() {
+        let mut context = tauri::generate_context!();
+        let profile = tempfile::tempdir().unwrap();
+        let window = &mut context.config_mut().app.windows[0];
+        window.url = tauri::WebviewUrl::External("about:blank".parse().unwrap());
+        window.data_directory = Some(profile.path().to_owned());
+        window.x = Some(-3000.);
+        window.y = Some(-3000.);
+        let app = tauri::Builder::default()
+            .any_thread()
+            .manage(Session::default())
+            .build(context)
+            .unwrap();
+        let status = app.run_return(|handle, event| {
+            if matches!(event, tauri::RunEvent::Ready) {
+                match check_capture_visibility(handle) {
+                    Ok(()) => handle.exit(0),
+                    Err(reason) => {
+                        eprintln!("{reason}");
+                        handle.exit(1);
+                    }
+                }
+            }
+        });
+        assert_eq!(status, 0);
+    }
 }
