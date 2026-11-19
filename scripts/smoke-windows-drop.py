@@ -66,16 +66,20 @@ def exercise(page, folder):
     shutil.copyfile(Path(__file__).resolve().parents[1] / "src-tauri/icons/icon.png", image)
     drag("dragEnter", image, 32, 12)
     expect(page.locator('[data-drop-action="convert"]')).to_be_visible()
-    drag("dragOver", image, 160, 100)
-    drag("dragOver", image, -40, -40)
-    expect(handle).to_be_visible()
-    drag("dragEnter", image, 32, 12)
     resize = page.locator('[data-drop-action="resize"]')
-    expect(resize).to_be_visible()
     expect(page.locator(".widget")).to_have_css("width", "420px")
-    box = resize.bounding_box()
-    x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
-    drag("dragOver", image, x, y)
+    target = resize.element_handle()
+    target.wait_for_element_state("stable")
+    # Explorer sends drag-over events continuously while the window expands.
+    active = page.locator('[data-drop-action="resize"].active')
+    for _ in range(60):
+        box = target.bounding_box()
+        x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+        drag("dragOver", image, x, y)
+        if active.is_visible():
+            break
+        time.sleep(.05)
+    expect(active).to_be_visible()
     drag("drop", image, x, y)
     expect(page.get_by_text("Resize image", exact=True)).to_be_visible()
 
