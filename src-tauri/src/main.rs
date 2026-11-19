@@ -2,6 +2,7 @@
 mod audio;
 mod desktop;
 mod engine;
+mod fullscreen;
 mod jobs;
 #[cfg(windows)]
 mod windows_drop;

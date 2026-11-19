@@ -27,6 +27,10 @@ use windows_sys::Win32::{
 
 pub fn show(app: &AppHandle) {
     if let Some(win) = app.get_webview_window("main") {
+        app.state::<Session>()
+            .collapsed
+            .store(false, Ordering::Release);
+        crate::fullscreen::reveal(&win);
         let _ = win.show();
         let _ = win.unminimize();
         let _ = win.set_focus();
@@ -147,6 +151,9 @@ pub fn layout_widget(
     state
         .collapsed
         .store(docked && collapsed, Ordering::Relaxed);
+    if !(docked && collapsed) {
+        crate::fullscreen::reveal(&window);
+    }
     #[cfg(windows)]
     if previous != docked {
         let effects = if docked {
@@ -354,6 +361,7 @@ fn watch_folder(app: AppHandle) {
     }
 }
 pub fn monitor(app: &AppHandle) {
+    crate::fullscreen::monitor(app.clone());
     let app1 = app.clone();
     thread::spawn(move || watch_folder(app1));
     #[cfg(windows)]
@@ -395,8 +403,10 @@ pub fn widget_ready(app: AppHandle) -> AppResult<()> {
     let state = app.state::<Session>();
     state.ready.store(true, Ordering::Release);
     let win = app.get_webview_window("main").ok_or("Missing window")?;
-    win.show().explain()?;
-    if !state.collapsed.load(Ordering::Relaxed) {
+    if state.collapsed.load(Ordering::Relaxed) {
+        show_capture(&win).explain()?;
+    } else {
+        win.show().explain()?;
         win.set_focus().explain()?;
     }
     if state.shortcut_failed.load(Ordering::Relaxed) {

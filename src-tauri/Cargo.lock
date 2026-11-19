@@ -586,10 +586,11 @@ dependencies = [
 
 [[package]]
 name = "clippo"
-version = "0.7.1"
+version = "0.7.2"
 dependencies = [
  "arboard",
  "directories",
+ "gtk",
  "hound",
  "image",
  "lopdf",
@@ -612,6 +613,7 @@ dependencies = [
  "webview2-com",
  "windows-core",
  "windows-sys 0.61.2",
+ "x11rb",
 ]
 
 [[package]]

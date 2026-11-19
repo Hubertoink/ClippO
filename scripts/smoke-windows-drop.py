@@ -1,5 +1,7 @@
 """Regression test for disk-backed drops on Windows, run with an isolated ClippO build."""
 import json
+import ctypes
+from ctypes import wintypes
 import os
 import shutil
 import socket
@@ -27,7 +29,75 @@ def connect(app, port):
     raise RuntimeError("Timed out waiting for WebView2")
 
 
-def exercise(page, folder):
+def exercise_fullscreen(playwright, pid):
+    user32, gdi = ctypes.windll.user32, ctypes.windll.gdi32
+    user32.FindWindowExW.argtypes = [wintypes.HWND, wintypes.HWND, wintypes.LPCWSTR, wintypes.LPCWSTR]
+    user32.FindWindowExW.restype = wintypes.HWND
+    user32.SetWindowPos.argtypes = [wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int,
+                                    ctypes.c_int, ctypes.c_int, wintypes.UINT]
+    gdi.CreateRectRgn.restype = wintypes.HANDLE
+    user32.GetWindowRgn.argtypes = [wintypes.HWND, wintypes.HANDLE]
+    gdi.DeleteObject.argtypes = [wintypes.HANDLE]
+    def find_window(pid, class_name=None, title=None):
+        hwnd = None
+        while True:
+            hwnd = user32.FindWindowExW(None, hwnd, class_name, title)
+            assert hwnd, "Missing test window"
+            owner = wintypes.DWORD()
+            user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
+            if owner.value == pid and user32.IsWindowVisible(hwnd):
+                return hwnd
+
+    hwnd = find_window(pid, title="ClippO")
+    region = gdi.CreateRectRgn(0, 0, 0, 0)
+
+    def expect_mask(hidden):
+        for _ in range(60):
+            if (user32.GetWindowRgn(hwnd, region) == 1) == hidden:  # NULLREGION
+                return
+            time.sleep(.1)
+        raise AssertionError(f"Expected fullscreen mask to be {hidden}")
+
+    browser = playwright.chromium.launch(channel="msedge", headless=False)
+    try:
+        rect = wintypes.RECT()
+        assert user32.GetWindowRect(hwnd, ctypes.byref(rect))
+        page = browser.new_page(no_viewport=True)
+        page.set_content('<video></video><button onclick="document.querySelector(\'video\').requestFullscreen()">Play fullscreen</button>')
+        cdp = page.context.new_cdp_session(page)
+        window_id = cdp.send("Browser.getWindowForTarget")["windowId"]
+        def bounds(**values):
+            cdp.send("Browser.setWindowBounds", {"windowId": window_id, "bounds": values})
+        bounds(windowState="normal")
+        bounds(left=rect.left - 100, top=rect.top + 40, width=600, height=400)
+        bounds(windowState="maximized")
+        page.bring_to_front()
+        processes = browser.new_browser_cdp_session().send("SystemInfo.getProcessInfo")["processInfo"]
+        browser_pid = next(p["id"] for p in processes if p["type"] == "browser")
+        fixture = find_window(browser_pid, class_name="Chrome_WidgetWin_1")
+        # Keep the isolated browser visible even on a busy developer desktop.
+        assert user32.SetWindowPos(fixture, -1, 0, 0, 0, 0, 0x0013)
+        for _ in range(2):
+            page.get_by_role("button", name="Play fullscreen").click()
+            # CDP can emulate DOM fullscreen without resizing the native window.
+            bounds(windowState="fullscreen")
+            expect_mask(True)
+            page.evaluate("document.exitFullscreen()")
+            bounds(windowState="normal")
+            bounds(windowState="maximized")
+            expect_mask(False)
+        page.get_by_role("button", name="Play fullscreen").click()
+        bounds(windowState="fullscreen")
+        expect_mask(True)
+        browser.close()
+        # Closing the fullscreen browser must return the drop as well.
+        expect_mask(False)
+    finally:
+        browser.close()
+        gdi.DeleteObject(region)
+
+
+def exercise(page, folder, playwright, pid):
     page.locator(".widget").wait_for()
     page.evaluate("""localStorage.setItem('clippo.preferences', JSON.stringify({
         language:'en', watch:false, teardrop:true, motion:'Off'
@@ -38,6 +108,7 @@ def exercise(page, folder):
     expect(handle).to_have_css("height", "24px")
     assert handle.evaluate("el => getComputedStyle(el, '::before').height") == "20px"
     expect(page.locator(".widget")).to_have_css("width", "64px")
+    exercise_fullscreen(playwright, pid)
     client = page.context.new_cdp_session(page)
 
     def drag(event, file, x, y):
@@ -98,7 +169,7 @@ def main():
                 endpoint = connect(app, port)
                 with sync_playwright() as playwright:
                     browser = playwright.chromium.connect_over_cdp(endpoint)
-                    exercise(browser.contexts[0].pages[0], folder)
+                    exercise(browser.contexts[0].pages[0], folder, playwright, app.pid)
             finally:
                 app.terminate()
                 app.wait(timeout=10)

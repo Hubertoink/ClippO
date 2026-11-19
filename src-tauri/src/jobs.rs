@@ -34,6 +34,7 @@ pub struct Session {
     pub ready: AtomicBool,
     pub docked: AtomicBool,
     pub collapsed: AtomicBool,
+    pub teardrop_masked: AtomicBool,
     pub shortcut_failed: AtomicBool,
     pub ignored_path: Mutex<Option<(PathBuf, SystemTime)>>,
 }
