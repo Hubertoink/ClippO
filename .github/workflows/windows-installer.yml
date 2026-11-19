@@ -13,9 +13,19 @@ jobs:
       - run: npm ci
       - run: ./scripts/desktop.ps1 build
       - run: cargo test --release --locked --manifest-path src-tauri/Cargo.toml
+      - name: Package portable app
+        shell: pwsh
+        run: |
+          $version = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          New-Item -ItemType Directory -Path release/portable -Force | Out-Null
+          Copy-Item src-tauri/target/release/clippo.exe release/portable/
+          Copy-Item src-tauri/resources release/portable/resources -Recurse
+          Compress-Archive -Path release/portable/* -DestinationPath "release/ClippO_${version}_x64-portable.zip"
       - uses: actions/upload-artifact@v4
         with:
           name: windows-x64-installer
-          path: src-tauri/target/release/bundle/nsis/*-setup.exe
+          path: |
+            src-tauri/target/release/bundle/nsis/*-setup.exe
+            release/*-portable.zip
           if-no-files-found: error
           compression-level: 0

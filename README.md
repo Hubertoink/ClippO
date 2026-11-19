@@ -4,7 +4,7 @@ Ein schwebendes Windows-Widget für Bilder, Screenshots und PDFs. Mit **Strg + U
 
 ## Starten
 
-Den Windows-x64-Installer findest du unter [GitHub Releases](https://github.com/Hubertoink/ClippO/releases/latest). Das Setup bringt den Microsoft-Offline-Installer für die benötigte WebView2-Laufzeit mit und installiert sie bei Bedarf. Ein neuer Release-Build schreibt den Installer nach `src-tauri/target/release/bundle/nsis/`. Das Widget erscheint am Bildschirmrand. Schließen oder die Minus-Schaltfläche blendet es aus. Über das Tray-Symbol lässt es sich wieder öffnen oder vollständig beenden.
+Den Windows-x64-Installer findest du unter [GitHub Releases](https://github.com/Hubertoink/ClippO/releases/latest). Ab Version 0.3.2 enthält das Setup kein WebView2-Installationspaket und installiert die Laufzeit nicht nach. Die Microsoft WebView2 Runtime muss bereits auf dem Rechner vorhanden sein; das gilt auch für die portable ZIP. Ein neuer Release-Build schreibt den Installer nach `src-tauri/target/release/bundle/nsis/`. Das Widget erscheint am Bildschirmrand. Schließen oder die Minus-Schaltfläche blendet es aus. Über das Tray-Symbol lässt es sich wieder öffnen oder vollständig beenden.
 
 Für die Entwicklung werden Node.js 22.12 oder neuer, Rust mit MSVC-Toolchain, Visual Studio C++ Build Tools, das Windows SDK und WebView2 benötigt. Das Startskript lädt die festgelegten Codec-Versionen beim ersten Build herunter und prüft ihre SHA-256-Prüfsummen.
 

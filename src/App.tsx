@@ -1048,9 +1048,6 @@ export default function App() {
                   hidden={!!edit || (s.compact && !!result && !busy)}
                 >
                   <div className="mode-control" ref={modeBox}>
-                    <span className="control-title">
-                      {t("Compression mode", "Kompressionsmodus")}
-                    </span>
                     <button
                       className="mode-select"
                       aria-haspopup="menu"

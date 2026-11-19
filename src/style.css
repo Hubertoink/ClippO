@@ -362,12 +362,6 @@ p {
   justify-content: space-between;
   gap: 8px;
 }
-.control-title {
-  display: block;
-  font-size: 11px;
-  letter-spacing: 0.05px;
-  color: var(--muted);
-}
 .mode-select {
   display: flex;
   height: 33px;
@@ -993,9 +987,6 @@ footer {
 :root[data-native="true"] .mode-control {
   flex-direction: row;
   align-items: center;
-}
-:root[data-native="true"] .control-title {
-  font-size: 9px;
 }
 :root[data-native="true"] .mode-select {
   height: 26px;
