@@ -158,7 +158,7 @@ pub fn layout_widget(
         .or(window.primary_monitor().explain()?)
         .ok_or("Display unavailable")?;
     let area = monitor.work_area();
-    let (w, h) = if collapsed { (64, 32) } else { (420, height) };
+    let (w, h) = if collapsed { (64, 24) } else { (420, height) };
     let size = tauri::LogicalSize::new(w, h).to_physical::<u32>(monitor.scale_factor());
     let x = area.position.x + (area.size.width as i32 - size.width as i32) / 2;
     let y = area.position.y;

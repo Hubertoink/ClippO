@@ -35,6 +35,8 @@ def exercise(page, folder):
     page.reload()
     handle = page.get_by_role("button", name="Open ClippO", exact=True)
     expect(handle).to_be_visible()
+    expect(handle).to_have_css("height", "24px")
+    assert handle.evaluate("el => getComputedStyle(el, '::before').height") == "20px"
     expect(page.locator(".widget")).to_have_css("width", "64px")
     client = page.context.new_cdp_session(page)
 
