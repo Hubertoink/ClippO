@@ -1,0 +1,19 @@
+ClippO uses LAME to encode MP3 audio and Hound to read WAV recordings.
+
+LAME project and contributors: https://lame.sourceforge.io/
+The LAME source distributed with mp3lame-sys is available in this exact archive:
+https://static.crates.io/crates/mp3lame-sys/mp3lame-sys-0.2.0.crate
+See lame-library.txt for the GNU Library General Public License.
+
+The Rust bindings are distributed under the GNU Lesser General Public License.
+See mp3lame-bindings.txt and gpl-3.0.txt.
+https://static.crates.io/crates/mp3lame-encoder/mp3lame-encoder-0.3.0.crate
+
+Hound is distributed under the Apache License 2.0 (hound.txt).
+https://static.crates.io/crates/hound/hound-3.5.1.crate
+
+ClippO source, dependency lockfiles and build instructions:
+https://github.com/Hubertoink/ClippO
+To rebuild with a modified library, use Cargo's [patch.crates-io] table
+in src-tauri/Cargo.toml to point to its extracted source and run the
+desktop build for your platform.

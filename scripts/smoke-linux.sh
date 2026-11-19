@@ -15,14 +15,26 @@ xdotool windowactivate --sync "$window"
 convert -size 641x359 gradient: -strip "$test_home/sample.png"
 gs -q -dBATCH -dNOPAUSE -sDEVICE=pdfwrite -sOutputFile="$test_home/sample.pdf" \
   -c '/Helvetica findfont 18 scalefont setfont 20 50 moveto (ClippO PDF test) show showpage'
-for ext in png pdf; do
+python3 - "$test_home/sample.wav" <<'PY'
+import math, struct, sys, wave
+with wave.open(sys.argv[1], "wb") as f:
+    f.setparams((1, 2, 44100, 0, "NONE", ""))
+    f.writeframes(b"".join(struct.pack("<h", round(16000 * math.sin(2 * math.pi * i / 100))) for i in range(44100)))
+PY
+for ext in png pdf wav; do
+  suffix=$ext
+  if [[ "$ext" == wav ]]; then suffix=mp3; fi
   printf 'file://%s/sample.%s\r\n' "$test_home" "$ext" | xclip -selection clipboard -t text/uri-list
   xdotool key ctrl+v
   for attempt in {1..80}; do
-    result=$(find "$XDG_CACHE_HOME" -name "sample-clippo.$ext" -type f -size +0c -print -quit)
+    result=$(find "$XDG_CACHE_HOME" -name "sample-clippo.$suffix" -type f -size +0c -print -quit)
     [[ -n "$result" ]] && break
     sleep 0.25
   done
   if [[ -z "$result" ]]; then cat "$test_home/widget.log"; exit 1; fi
-  if [[ "$ext" == pdf ]]; then qpdf --check "$result"; else identify "$result"; fi
+  case "$suffix" in
+    pdf) qpdf --check "$result";;
+    png) identify "$result";;
+    mp3) file --brief --mime-type "$result" | grep -Fx audio/mpeg;;
+  esac
 done

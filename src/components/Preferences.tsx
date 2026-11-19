@@ -153,6 +153,19 @@ export function Preferences({ s, set, close, initial }: Props) {
             {range("webp", t("WebP quality", "WebP-Qualität"))}
             {range("png", t("PNG optimization", "PNG-Optimierung"), 6)}
             {range("pdf", t("PDF quality", "PDF-Qualität"))}
+            {native &&
+              row(
+                t("Custom MP3 bitrate", "Eigene MP3-Bitrate"),
+                <select
+                  aria-label={t("Custom MP3 bitrate", "Eigene MP3-Bitrate")}
+                  value={s.mp3Kbps}
+                  onChange={(e) => set({ mp3Kbps: Number(e.target.value), mode: "Custom" })}
+                >
+                  {[96, 128, 160, 192, 256, 320].map((rate) => (
+                    <option key={rate} value={rate}>{rate} kbit/s</option>
+                  ))}
+                </select>,
+              )}
             {select(
               "output",
               {

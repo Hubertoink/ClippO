@@ -45,6 +45,7 @@ import { Preferences } from "./components/Preferences";
 import {
   estimated,
   extensions,
+  imageExtensions,
   native,
   linuxDesktop,
   pretty,
@@ -57,8 +58,8 @@ import {
 
 type DropAction = "compress" | "resize" | "convert";
 const isImageName = (name: string) =>
-  extensions.includes(name.split(".").pop()?.toLowerCase() || "") &&
-  !name.toLowerCase().endsWith(".pdf");
+  imageExtensions.includes(name.split(".").pop()?.toLowerCase() || "");
+const isWav = (name: string) => /\.wav$/i.test(name);
 function hitAction(x: number, y: number): DropAction {
   const action = document
     .elementFromPoint(x, y)
@@ -129,7 +130,7 @@ export default function App() {
     [shortcuts, setShortcuts] = useState(false),
     [fault, setFault] = useState(false);
   const [hoverAction, setHoverAction] = useState<DropAction>("compress");
-  const [imageDrag, setImageDrag] = useState(false);
+  const [dragKind, setDragKind] = useState<"image" | "wav" | "other">("other");
   const [edit, setEdit] = useState<{
     action: "resize" | "convert";
     files: Input[];
@@ -220,19 +221,20 @@ export default function App() {
         try {
           if (
             file !== "clipboard" &&
+            !("captureId" in file && file.captureId) &&
             !extensions.includes(
               file.name.split(".").pop()?.toLowerCase() || "",
             )
           )
             throw new Error(
               t(
-                "Choose a supported image or PDF.",
-                "Wähle ein unterstütztes Bild oder PDF.",
+                native ? "Choose an image, PDF or WAV file." : "Choose a supported image or PDF.",
+                native ? "Wähle ein Bild, eine PDF- oder WAV-Datei." : "Wähle ein unterstütztes Bild oder PDF.",
               ),
             );
           setInfo(
             file === "clipboard"
-              ? { name: t("Clipboard image", "Zwischenablage"), size: 0 }
+              ? { name: t("Clipboard", "Zwischenablage"), size: 0 }
               : { name: file.name, size: file.size },
           );
           let r: ResultFile;
@@ -314,7 +316,7 @@ export default function App() {
         const p = await open({
           multiple: true,
           filters: [
-            { name: t("Images and PDFs", "Bilder und PDFs"), extensions },
+            { name: t("Images, PDFs and WAV audio", "Bilder, PDFs und WAV-Audio"), extensions },
           ],
         });
         if (p) await paths(Array.isArray(p) ? p : [p]);
@@ -432,8 +434,10 @@ export default function App() {
               ),
             );
           if (payload.type === "enter") {
-            setImageDrag(
-              payload.paths.length > 0 && payload.paths.every(isImageName),
+            const paths = payload.paths;
+            setDragKind(
+              paths.length && paths.every(isWav) ? "wav" :
+              paths.length && paths.every(isImageName) ? "image" : "other",
             );
             setDrag(true);
             if (payload.paths[0]) {
@@ -727,12 +731,12 @@ export default function App() {
                     if (native) return;
                     e.preventDefault();
                     depth.current++;
-                    setImageDrag(
+                    setDragKind(
                       Array.from(e.dataTransfer.items).every(
                         (i) =>
                           i.type.startsWith("image/") ||
                           (i.kind === "file" && !i.type),
-                      ),
+                      ) ? "image" : "other",
                     );
                     setDrag(true);
                     const f = e.dataTransfer.items[0]?.getAsFile();
@@ -765,7 +769,7 @@ export default function App() {
                   {drag && !busy ? (
                     <div className="drop-palette">
                       <div className="drop-caption">
-                        {info?.size
+                        {info?.size && dragKind === "wav" ? pretty(info.size) : info?.size
                           ? pretty(info.size) +
                             " → ≈ " +
                             pretty(estimated(info.size, s))
@@ -778,7 +782,7 @@ export default function App() {
                         {(
                           [
                             "compress",
-                            ...(imageDrag ? ["resize", "convert"] : []),
+                            ...(dragKind === "image" ? ["resize", "convert"] : []),
                           ] as DropAction[]
                         ).map((kind) => {
                           const Icon =
@@ -796,7 +800,9 @@ export default function App() {
                               <Icon />
                               <b>
                                 {kind === "compress"
-                                  ? t("Compress", "Komprimieren")
+                                  ? dragKind === "wav"
+                                    ? t("Convert to MP3", "In MP3 umwandeln")
+                                    : t("Compress", "Komprimieren")
                                   : kind === "resize"
                                     ? t("Resize", "Größe ändern")
                                     : t("Convert", "Format ändern")}
@@ -882,9 +888,9 @@ export default function App() {
                       <div className="state-icon">
                         <LoaderCircle className="spin" />
                       </div>
-                      <h1>{t("Compressing…", "Wird verarbeitet…")}</h1>
+                      <h1>{isWav(info?.name || "") ? t("Converting to MP3…", "Wird in MP3 umgewandelt…") : t("Compressing…", "Wird verarbeitet…")}</h1>
                       <span className="filename">{info?.name}</span>
-                      {!!info?.size && (
+                      {!!info?.size && (!isWav(info.name) || measured > 0) && (
                         <div className="estimate">
                           {pretty(info.size)} <ArrowRight size={15} />{" "}
                           {measured && busy ? "" : "≈ "}
@@ -987,7 +993,7 @@ export default function App() {
                           <FileDown />
                           {t("Save copy", "Kopie speichern")}
                         </Button>
-                        {(native || !result.name.endsWith(".pdf")) && (
+                        {(native || isImageName(result.name)) && (
                           <Button
                             variant="secondary"
                             onClick={() => action(native ? "file" : "copy")}
@@ -1031,8 +1037,8 @@ export default function App() {
                       </h1>
                       <p className="hero-sub">
                         {t(
-                          "Drag in an image or PDF to get started.",
-                          "Zieh ein Bild oder PDF hierher.",
+                          native ? "Drop an image, PDF or WAV file." : "Drag in an image or PDF to get started.",
+                          native ? "Bild, PDF oder WAV-Datei hier ablegen." : "Zieh ein Bild oder PDF hierher.",
                         )}
                       </p>
                       <div className="button-row">
@@ -1053,7 +1059,7 @@ export default function App() {
                           "Unterstützte Formate",
                         )}
                       >
-                        {["PNG", "JPG", "WEBP", "AVIF", "HEIC", "PDF"].map(
+                        {["PNG", "JPG", "WEBP", "AVIF", "HEIC", "PDF", ...(native ? ["WAV"] : [])].map(
                           (ext) => (
                             <span key={ext}>{ext}</span>
                           ),
@@ -1139,7 +1145,7 @@ export default function App() {
                   <>
                     {[
                       [Copy, t("Copy file", "Datei kopieren"), "file"],
-                      ...(!result.name.endsWith(".pdf")
+                      ...(isImageName(result.name)
                         ? [
                             [
                               Clipboard,

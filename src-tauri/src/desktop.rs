@@ -197,8 +197,7 @@ fn watch_folder(app: AppHandle) {
             if matches!(e.kind, EventKind::Create(_) | EventKind::Modify(_)) {
                 for p in e.paths {
                     if p.parent() == Some(&folder)
-                        && engine::supported(&p)
-                        && engine::ext(&p) != "pdf"
+                        && engine::is_image(&p)
                         && !p
                             .file_stem()
                             .unwrap_or_default()

@@ -12,6 +12,7 @@ export type Settings = {
   webp: number;
   png: number;
   pdf: number;
+  mp3Kbps: number;
   output: "Original" | "WebP" | "JPEG" | "PNG";
   preserve: boolean;
   auto: boolean;
@@ -31,6 +32,7 @@ export const defaults: Settings = {
   webp: 78,
   png: 2,
   pdf: 72,
+  mp3Kbps: 192,
   output: "Original",
   preserve: false,
   auto: false,
@@ -98,7 +100,7 @@ export function estimated(size: number, s: Settings) {
     ),
   );
 }
-export const extensions = [
+export const imageExtensions = [
   "png",
   "jpg",
   "jpeg",
@@ -106,5 +108,5 @@ export const extensions = [
   "avif",
   "heic",
   "heif",
-  "pdf",
 ];
+export const extensions = [...imageExtensions, "pdf", ...(native ? ["wav"] : [])];

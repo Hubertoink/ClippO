@@ -1,6 +1,6 @@
 [package]
 name = "clippo"
-version = "0.5.1"
+version = "0.6.0"
 edition = "2021"
 authors = ["Hubertoink <Hubertoink@users.noreply.github.com>"]
 description = "Floating image and PDF compressor for Windows and Linux"
@@ -8,7 +8,12 @@ description = "Floating image and PDF compressor for Windows and Linux"
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
+[dev-dependencies]
+nanomp3 = { version = "0.2", default-features = false, features = ["alloc"] }
+
 [dependencies]
+hound = "3.5"
+mp3lame-encoder = { version = "0.3", features = ["std"] }
 tauri = { version = "2", features = ["tray-icon", "image-png"] }
 tauri-plugin-updater = "2"
 tauri-plugin-dialog = "2"

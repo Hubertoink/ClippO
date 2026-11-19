@@ -29,6 +29,7 @@ pub struct Options {
     pub webp: u8,
     pub png: u8,
     pub pdf: u8,
+    pub mp3_kbps: Option<u16>,
     pub output: String,
     pub preserve: bool,
     pub folder: String,
@@ -76,10 +77,10 @@ pub fn ext(path: &Path) -> String {
     }
 }
 pub fn supported(p: &Path) -> bool {
-    matches!(
-        ext(p).as_str(),
-        "png" | "jpg" | "webp" | "avif" | "heic" | "pdf"
-    )
+    is_image(p) || matches!(ext(p).as_str(), "pdf" | "wav")
+}
+pub fn is_image(p: &Path) -> bool {
+    matches!(ext(p).as_str(), "png" | "jpg" | "webp" | "avif" | "heic")
 }
 pub fn hidden(exe: &Path) -> Command {
     let mut command = Command::new(exe);
@@ -136,7 +137,7 @@ fn image_tool(_engines: &Path, identify: bool) -> Command {
     }
 }
 pub fn image_dimensions(input: &Path, engines: &Path) -> AppResult<(u32, u32)> {
-    if !supported(input) || ext(input) == "pdf" {
+    if !is_image(input) {
         return Err("Expected an image.".into());
     }
     if matches!(ext(input).as_str(), "jpg" | "png" | "webp") {
@@ -585,22 +586,19 @@ pub fn compress(
     s: &Options,
     progress: &dyn Fn(u64),
 ) -> AppResult<PathBuf> {
-    if ext(input) == "pdf" {
-        pdf(input, work, engines, s, progress)
-    } else {
-        images(input, work, engines, s, progress)
+    match ext(input).as_str() {
+        "pdf" => pdf(input, work, engines, s, progress),
+        "wav" => crate::audio::to_mp3(input, work, s, progress),
+        _ => images(input, work, engines, s, progress),
     }
 }
 
 #[cfg(test)]
-mod resize_tests {
+mod tests {
     use super::*;
 
-    #[test]
-    fn pixel_preview_matches_encoded_dimensions_for_odd_sizes() {
-        let work = tempfile::tempdir().unwrap();
-        let engines = Path::new(env!("CARGO_MANIFEST_DIR")).join("resources/engines");
-        let options = Options {
+    fn options() -> Options {
+        Options {
             mode: "Balanced".into(),
             under_mb: false,
             max_kb: 0,
@@ -609,12 +607,19 @@ mod resize_tests {
             webp: 78,
             png: 2,
             pdf: 72,
+            mp3_kbps: None,
             output: "Original".into(),
             preserve: false,
             folder: String::new(),
             replace: false,
             language: "en".into(),
-        };
+        }
+    }
+    #[test]
+    fn pixel_preview_matches_encoded_dimensions_for_odd_sizes() {
+        let work = tempfile::tempdir().unwrap();
+        let engines = Path::new(env!("CARGO_MANIFEST_DIR")).join("resources/engines");
+        let options = options();
         for ext in ["jpg", "png", "webp"] {
             let source = work.path().join(format!("odd.{ext}"));
             image::RgbImage::new(641, 359).save(&source).unwrap();
@@ -622,5 +627,52 @@ mod resize_tests {
             let result = images(&source, work.path(), &engines, &options, &|_| {}).unwrap();
             assert_eq!(image_dimensions(&result, &engines).unwrap(), (321, 180));
         }
+    }
+
+    #[test]
+    fn wav_conversion_preserves_duration_channels_and_signal() {
+        use hound::{SampleFormat, WavSpec, WavWriter};
+        let work = tempfile::tempdir().unwrap();
+        let source = work.path().join("tone.WAV");
+        let mut opts = options();
+        opts.max_kb = 20;
+        for (channels, bits, format) in [
+            (1, 16, SampleFormat::Int),
+            (2, 24, SampleFormat::Int),
+            (2, 32, SampleFormat::Float),
+        ] {
+            let mut wav = WavWriter::create(
+                &source,
+                WavSpec {
+                    channels,
+                    sample_rate: 44100,
+                    bits_per_sample: bits,
+                    sample_format: format,
+                },
+            )
+            .unwrap();
+            for frame in 0..44100 {
+                let sample = 0.5 * (frame as f32 * std::f32::consts::TAU * 440. / 44100.).sin();
+                for _ in 0..channels {
+                    match format {
+                        SampleFormat::Int => wav
+                            .write_sample((sample * 2_f32.powi(i32::from(bits) - 1)) as i32)
+                            .unwrap(),
+                        SampleFormat::Float => wav.write_sample(sample).unwrap(),
+                    }
+                }
+            }
+            wav.finalize().unwrap();
+            let original = fs::read(&source).unwrap();
+            let mp3 = compress(&source, work.path(), work.path(), &opts, &|_| {}).unwrap();
+            let bytes = fs::read(mp3).unwrap();
+            assert!(bytes.len() <= 20000);
+            let decoded = nanomp3::decode_all::<f32>(&bytes);
+            assert_eq!(decoded.samples.len(), usize::from(channels) * 44100);
+            assert!(decoded.samples.iter().any(|v| v.abs() > 0.3));
+            assert_eq!(original, fs::read(&source).unwrap());
+        }
+        fs::write(&source, b"not a WAV file").unwrap();
+        assert!(compress(&source, work.path(), work.path(), &opts, &|_| {}).is_err());
     }
 }
