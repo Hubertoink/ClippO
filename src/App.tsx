@@ -36,7 +36,6 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { LogicalSize } from "@tauri-apps/api/dpi";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Button } from "./components/ui";
 import { ResizeDimensions } from "./components/ResizeDimensions";
@@ -59,6 +58,10 @@ import {
 type DropAction = "compress" | "resize" | "convert";
 const isImageName = (name: string) =>
   imageExtensions.includes(name.split(".").pop()?.toLowerCase() || "");
+const windowsDrop = native && !linuxDesktop;
+type ExplorerWebview = {
+  postMessageWithAdditionalObjects?: (message: string, files: File[]) => void;
+};
 const isWav = (name: string) => /\.wav$/i.test(name);
 function hitAction(x: number, y: number): DropAction {
   const action = document
@@ -136,6 +139,22 @@ export default function App() {
     files: Input[];
   } | null>(null);
   const [updateVisible, setUpdateVisible] = useState(false);
+  const [dockOpen, setDockOpen] = useState(false);
+  const docked = native && s.teardrop;
+  const collapsed = docked && !(dockOpen || drag || busy || preferences || edit || shortcuts || detected);
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const clearLeave = () => clearTimeout(leaveTimer.current);
+  const collapse = () => {
+    clearLeave();
+    setDockOpen(false);
+    setDrag(false);
+    setPref("");
+    setShortcuts(false);
+    setDetected(null);
+    setModeMenu(false);
+    setActions(false);
+    setEdit(null);
+  };
   const installing = useRef(false);
   const [percent, setPercent] = useState(50);
   const [format, setFormat] = useState<Settings["output"]>("WebP");
@@ -144,15 +163,16 @@ export default function App() {
     latest = useRef(s),
     previous = useRef<Input | null>(null);
   const input = useRef<HTMLInputElement>(null),
-    depth = useRef(0),
     noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null),
     modeBox = useRef<HTMLDivElement>(null);
   const osReduced = useReducedMotion(),
     off = !!osReduced || s.motion === "Off";
   const t = (en: string, de: string) => (s.language === "de" ? de : en);
-  const set = (v: Partial<Settings>) =>
+  const set = (v: Partial<Settings>) => {
+    if (v.teardrop !== undefined) setDockOpen(false);
     setSettings((old) => ({ ...old, ...v }));
+  };
   const [noticePath, setNoticePath] = useState<string>();
   const message = (msg: string, error = false, path?: string) => {
     setNoticePath(path);
@@ -174,18 +194,14 @@ export default function App() {
     document.documentElement.dataset.native = String(native);
     if (native) invoke("set_detection", { enabled: s.watch }).catch(caught);
   }, [s]);
+  const height = (preferences ? 420 : shortcuts ? 300 : s.compact ? 236 : result && !busy ? 300 : 260) +
+    (updateVisible ? 46 : 0);
   useEffect(() => {
-    if (native)
-      getCurrentWebviewWindow()
-        .setSize(
-          new LogicalSize(
-            420,
-            (preferences ? 420 : shortcuts ? 300 : s.compact ? 236 : result && !busy ? 300 : 260) +
-              (updateVisible ? 46 : 0),
-          ),
-        )
-        .catch(caught);
-  }, [preferences, s.compact, shortcuts, !!result, busy, updateVisible]);
+    if (updateVisible && latest.current.teardrop) setDockOpen(true);
+  }, [updateVisible]);
+  useEffect(() => {
+    if (native) void invoke("layout_widget", { docked, collapsed, height }).catch(caught);
+  }, [docked, collapsed, height]);
   useEffect(() => {
     if (!modeMenu) return;
     const outside = (e: PointerEvent) => {
@@ -196,6 +212,7 @@ export default function App() {
   }, [modeMenu]);
   async function run(files: Input[], options?: Partial<Settings>) {
     if (installing.current) return;
+    if (latest.current.teardrop) setDockOpen(true);
     setEdit(null);
     queue.current.push(...files.map((file) => ({ file, options })));
     setWaiting(queue.current.length);
@@ -277,7 +294,7 @@ export default function App() {
       setInfo(null);
     }
   }
-  function drop(files: Input[], action: DropAction) {
+  async function drop(files: Input[], action: DropAction) {
     if (
       action === "compress" ||
       !files.every((f) => f !== "clipboard" && isImageName(f.name))
@@ -300,6 +317,8 @@ export default function App() {
     );
   }
   const paths = async (items: string[], action: DropAction = "compress") => {
+    clearLeave();
+    if (latest.current.teardrop) setDockOpen(true);
     const files = await Promise.all(
       items.map(async (path) => ({
         path,
@@ -393,6 +412,7 @@ export default function App() {
         else if (st.actions) setActions(false);
         else if (st.preferences) setPref("");
         else if (st.shortcuts) setShortcuts(false);
+        else if (native && st.s.teardrop) collapse();
         else if (native) void getCurrentWebviewWindow().hide();
         else setDetected(null);
       }
@@ -424,15 +444,28 @@ export default function App() {
     window.addEventListener("keydown", key);
     window.addEventListener("paste", onPaste);
     if (native) {
+      if (windowsDrop) {
+        clean.push(
+          listen<{ paths: string[]; action: DropAction }>("windows-file-drop", ({ payload }) => {
+            void eventRef.current.paths(payload.paths, payload.action).catch(caught);
+          }),
+          listen("windows-file-drop-error", () => {
+            const german = eventRef.current.s.language === "de";
+            caught(german ? "Dateipfad nicht verfügbar. Bitte die Datei auswählen." : "File path unavailable. Please browse for the file.");
+          }),
+        );
+      }
       clean.push(
         getCurrentWebviewWindow().onDragDropEvent(async ({ payload }) => {
-          if (payload.type === "over" || payload.type === "enter")
+          if (payload.type === "over" || payload.type === "enter") {
+            clearLeave();
             setHoverAction(
               hitAction(
                 payload.position.x / devicePixelRatio,
                 payload.position.y / devicePixelRatio,
               ),
             );
+          }
           if (payload.type === "enter") {
             const paths = payload.paths;
             setDragKind(
@@ -449,7 +482,7 @@ export default function App() {
             }
           }
           if (payload.type === "leave") {
-            setDrag(false);
+            leaveTimer.current = setTimeout(() => setDrag(false), 160);
             if (!locked.current) setInfo(null);
           }
           if (payload.type === "drop") {
@@ -504,8 +537,10 @@ export default function App() {
       clean.push(
         listen("widget-opened", () => {
           interact();
+          if (latest.current.teardrop) setDockOpen(true);
           setDetected(null);
         }),
+        listen("collapse-widget", collapse),
       );
       clean.push(
         listen<number>("compression-progress", ({ payload }) =>
@@ -518,6 +553,7 @@ export default function App() {
     }
     return () => {
       window.removeEventListener("keydown", key);
+      clearLeave();
       window.removeEventListener("paste", onPaste);
       clean.forEach((p) => p.then((f) => f()));
     };
@@ -602,8 +638,59 @@ export default function App() {
     <MotionConfig reducedMotion={off ? "always" : "user"}>
       <main
         className={
-          "desktop " + (s.compact ? "compact " : "") + (off ? "no-motion" : "")
+          "desktop " + (s.compact ? "compact " : "") + (off ? "no-motion " : "") +
+          (docked ? (collapsed ? "dock-resting" : "dock-expanded") : "") +
+          (s.motion === "Subtle" ? " subtle-motion" : "")
         }
+        onDragEnter={(e) => {
+          if ((native && !windowsDrop) || !e.dataTransfer.types.includes("Files")) return;
+          e.preventDefault();
+          clearLeave();
+          const first = e.dataTransfer.items[0]?.getAsFile();
+          if (first) setInfo({ name: first.name, size: first.size });
+          const items = Array.from(e.dataTransfer.items).filter(i => i.kind === "file");
+          const audio = items.length > 0 && items.every(i => /^audio\/(?:wav|wave|x-wav|vnd\.wave)$/i.test(i.type));
+          const images = items.length > 0 && items.every(i => !i.type || i.type.startsWith("image/"));
+          setDragKind(audio && windowsDrop ? "wav" : images ? "image" : "other");
+          setDrag(true);
+        }}
+        onDragOver={(e) => {
+          if ((native && !windowsDrop) || !e.dataTransfer.types.includes("Files")) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+          clearLeave();
+          setDrag(true);
+          setHoverAction(hitAction(e.clientX, e.clientY));
+        }}
+        onDragLeave={(e) => {
+          if ((native && !windowsDrop) || !e.dataTransfer.types.includes("Files")) return;
+          if (e.relatedTarget instanceof Node && e.currentTarget.contains(e.relatedTarget)) return;
+          clearLeave();
+          leaveTimer.current = setTimeout(() => {
+            setDrag(false);
+            if (!locked.current) setInfo(null);
+          }, 180);
+        }}
+        onDrop={(e) => {
+          if (native && !windowsDrop) return;
+          e.preventDefault();
+          clearLeave();
+          const action = hitAction(e.clientX, e.clientY);
+          setDrag(false);
+          const files = Array.from(e.dataTransfer.files);
+          if (!files.length) return;
+          if (docked) setDockOpen(true);
+          if (windowsDrop) {
+            const host = (window as Window & { chrome?: { webview?: ExplorerWebview } }).chrome?.webview;
+            try {
+              if (!host?.postMessageWithAdditionalObjects)
+                throw new Error(t("Update Microsoft Edge WebView2 or browse for the file.", "Bitte Microsoft Edge WebView2 aktualisieren oder die Datei auswählen."));
+              host.postMessageWithAdditionalObjects(JSON.stringify({ clippo_drop: action }), files);
+            } catch (error) { caught(error); }
+          } else {
+            void drop(files, action).catch(caught);
+          }
+        }}
       >
         <motion.article
           className={"widget " + (preferences ? "settings-open" : "")}
@@ -617,8 +704,12 @@ export default function App() {
           onPointerDown={interact}
           onPointerEnter={interact}
         >
-          <header className="titlebar" data-tauri-drag-region>
-            <div className="brand" data-tauri-drag-region>
+          {collapsed && <button className="teardrop-handle"
+            aria-label={t("Open ClippO", "ClippO öffnen")}
+            title={t("Drop a file or click to open ClippO", "Datei ablegen oder ClippO per Klick öffnen")}
+            onClick={() => setDockOpen(true)}><ChevronsDownUp aria-hidden="true" /></button>}
+          <header className="titlebar" data-tauri-drag-region={docked ? undefined : true}>
+            <div className="brand" data-tauri-drag-region={docked ? undefined : true}>
               <span className="brand-mark">
                 <ChevronsDownUp strokeWidth={2.8} />
               </span>
@@ -653,9 +744,9 @@ export default function App() {
               {native && (
                 <Button
                   variant="icon"
-                  title={t("Hide widget", "Widget ausblenden")}
-                  aria-label={t("Hide widget", "Widget ausblenden")}
-                  onClick={() => getCurrentWebviewWindow().hide()}
+                  title={docked ? t("Collapse to teardrop", "Zum Tropfen einklappen") : t("Hide widget", "Widget ausblenden")}
+                  aria-label={docked ? t("Collapse to teardrop", "Zum Tropfen einklappen") : t("Hide widget", "Widget ausblenden")}
+                  onClick={() => docked ? collapse() : getCurrentWebviewWindow().hide()}
                 >
                   <Minus />
                 </Button>
@@ -727,44 +818,6 @@ export default function App() {
                     (result && !busy ? "completed " : "") +
                     (busy ? "processing" : "")
                   }
-                  onDragEnter={(e) => {
-                    if (native) return;
-                    e.preventDefault();
-                    depth.current++;
-                    setDragKind(
-                      Array.from(e.dataTransfer.items).every(
-                        (i) =>
-                          i.type.startsWith("image/") ||
-                          (i.kind === "file" && !i.type),
-                      ) ? "image" : "other",
-                    );
-                    setDrag(true);
-                    const f = e.dataTransfer.items[0]?.getAsFile();
-                    if (f) setInfo({ name: f.name, size: f.size });
-                  }}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = "copy";
-                    setHoverAction(hitAction(e.clientX, e.clientY));
-                  }}
-                  onDragLeave={(e) => {
-                    if (native) return;
-                    e.preventDefault();
-                    if (--depth.current <= 0) {
-                      setDrag(false);
-                      if (!busy) setInfo(null);
-                    }
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    depth.current = 0;
-                    setDrag(false);
-                    if (!native && e.dataTransfer.files.length)
-                      void drop(
-                        Array.from(e.dataTransfer.files),
-                        hitAction(e.clientX, e.clientY),
-                      );
-                  }}
                 >
                   {drag && !busy ? (
                     <div className="drop-palette">

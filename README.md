@@ -12,7 +12,7 @@ Choose a package from [GitHub Releases](https://github.com/Hubertoink/ClippO/rel
 | --- | --- | --- |
 | Windows x64 | `*-setup.exe` | Run the installer for your Windows account. |
 | Windows x64, portable | `*-portable.zip` | Extract the whole archive and run `clippo.exe` next to `resources`. |
-| Ubuntu 24.04 LTS, x86-64 | `*_amd64.deb` | In the download folder, run `sudo apt install ./ClippO_0.6.0_amd64.deb`. Open **ClippO** from the application menu. |
+| Ubuntu 24.04 LTS, x86-64 | `*_amd64.deb` | In the download folder, run `sudo apt install ./ClippO_0.7.0_amd64.deb`. Open **ClippO** from the application menu. |
 
 Both Windows editions require the Microsoft Edge WebView2 Runtime. On Ubuntu, APT installs the runtime dependencies, including WebKitGTK, ImageMagick, qpdf and Ghostscript.
 
@@ -21,6 +21,7 @@ ClippO starts in German on German-language systems and in English elsewhere. Cho
 ## Use the widget
 
 - Press **Ctrl + Shift + O** to show or hide ClippO. **Ctrl + O** opens a file picker. The tray menu can reopen or quit the app.
+- Enable **Preferences → Appearance → Top-edge teardrop** to dock ClippO at the top center of the current screen. Drag a file onto the teardrop to unfold its actions, or click it to open the widget. The minus button and **Ctrl + Shift + O** collapse it again.
 - Drop a PNG, JPEG, WebP, AVIF, HEIC or PDF to compress it. When dropping images, you can also resize or convert them. The resize preview shows the original and target width and height for each image.
 - Drop or browse for a mono or stereo WAV file to convert it locally to MP3. Choose **Save copy** to save `<name>-clippo.mp3` beside the WAV. Balanced uses a target bitrate of 192 kbit/s, Smart 256 and Maximum 96. Set a custom bitrate under **Preferences → Compression**. A file-size limit can lower the bitrate. The decoder accepts PCM WAV and 32-bit IEEE float WAV at 8–384 kHz. WAV-specific metadata is not transferred.
 - Choose **Balanced**, **Smart**, **Maximum** or **Custom**. Enable **Under 1 MB** to target 999,999 bytes. ClippO reports the actual output size when it finishes.

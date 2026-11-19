@@ -3,6 +3,8 @@ mod audio;
 mod desktop;
 mod engine;
 mod jobs;
+#[cfg(windows)]
+mod windows_drop;
 
 use std::sync::atomic::Ordering;
 use tauri::{
@@ -42,6 +44,8 @@ fn main() {
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let win = app.get_webview_window("main").unwrap();
+            #[cfg(windows)]
+            windows_drop::install(&win)?;
             desktop::position(&win);
             let open = MenuItem::with_id(app, "open", "Open ClippO", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit ClippO", true, None::<&str>)?;
@@ -105,6 +109,7 @@ fn main() {
             jobs::result_action,
             jobs::reveal_saved,
             desktop::set_detection,
+            desktop::layout_widget,
             desktop::widget_ready
         ])
         .run(tauri::generate_context!())

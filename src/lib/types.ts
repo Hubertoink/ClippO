@@ -20,6 +20,7 @@ export type Settings = {
   folder: string;
   replace: boolean;
   compact: boolean;
+  teardrop: boolean;
   theme: "Dark" | "Light" | "System";
   motion: "Full" | "Subtle" | "Off";
   language: "en" | "de";
@@ -40,6 +41,7 @@ export const defaults: Settings = {
   folder: "",
   replace: false,
   compact: false,
+  teardrop: false,
   theme: "Dark",
   motion: "Full",
   language: navigator.language.toLowerCase().split("-")[0] === "de" ? "de" : "en",

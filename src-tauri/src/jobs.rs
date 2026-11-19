@@ -32,6 +32,8 @@ pub struct Session {
     clipboard_owner: Mutex<Option<Clipboard>>,
     pub watching: AtomicBool,
     pub ready: AtomicBool,
+    pub docked: AtomicBool,
+    pub collapsed: AtomicBool,
     pub shortcut_failed: AtomicBool,
     pub ignored_path: Mutex<Option<(PathBuf, SystemTime)>>,
 }

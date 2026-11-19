@@ -586,7 +586,7 @@ dependencies = [
 
 [[package]]
 name = "clippo"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "arboard",
  "directories",
@@ -609,6 +609,8 @@ dependencies = [
  "tauri-plugin-updater",
  "tempfile",
  "webp",
+ "webview2-com",
+ "windows-core",
  "windows-sys 0.61.2",
 ]
 

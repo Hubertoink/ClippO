@@ -36,7 +36,14 @@ pub fn show(app: &AppHandle) {
 pub fn toggle(app: &AppHandle) {
     if let Some(win) = app.get_webview_window("main") {
         if win.is_visible().unwrap_or(false) && !win.is_minimized().unwrap_or(false) {
-            let _ = win.hide();
+            let state = app.state::<Session>();
+            if !state.docked.load(Ordering::Relaxed) {
+                let _ = win.hide();
+            } else if state.collapsed.load(Ordering::Relaxed) {
+                show(app);
+            } else {
+                let _ = app.emit("collapse-widget", ());
+            }
         } else {
             show(app);
         }
@@ -98,6 +105,9 @@ pub fn keep_visible(win: &tauri::Window) {
     }
 }
 pub fn remember(app: &AppHandle, x: i32, y: i32) {
+    if app.state::<Session>().docked.load(Ordering::Relaxed) {
+        return;
+    }
     if let Some(p) = position_file(app) {
         if let Some(dir) = p.parent() {
             let _ = fs::create_dir_all(dir);
@@ -108,6 +118,74 @@ pub fn remember(app: &AppHandle, x: i32, y: i32) {
             }
         }
     }
+}
+
+#[tauri::command]
+pub fn layout_widget(
+    window: WebviewWindow,
+    docked: bool,
+    collapsed: bool,
+    height: u32,
+) -> AppResult<()> {
+    let state = window.state::<Session>();
+    let previous = state.docked.swap(docked, Ordering::Relaxed);
+    state
+        .collapsed
+        .store(docked && collapsed, Ordering::Relaxed);
+    #[cfg(windows)]
+    if previous != docked {
+        let effects = if docked {
+            None
+        } else {
+            window.config().app.windows[0].window_effects.clone()
+        };
+        let _ = window.set_effects(effects);
+        let _ = window.set_shadow(!docked);
+    }
+    let height = height.clamp(200, 520);
+    if !docked {
+        window
+            .set_size(tauri::LogicalSize::new(420, height))
+            .explain()?;
+        if previous {
+            position(&window);
+        }
+        return Ok(());
+    }
+    let monitor = window
+        .current_monitor()
+        .explain()?
+        .or(window.primary_monitor().explain()?)
+        .ok_or("Display unavailable")?;
+    let area = monitor.work_area();
+    let (w, h) = if collapsed { (64, 32) } else { (420, height) };
+    let size = tauri::LogicalSize::new(w, h).to_physical::<u32>(monitor.scale_factor());
+    let x = area.position.x + (area.size.width as i32 - size.width as i32) / 2;
+    let y = area.position.y;
+    #[cfg(windows)]
+    unsafe {
+        use windows_sys::Win32::UI::WindowsAndMessaging::{
+            SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER,
+        };
+        if SetWindowPos(
+            window.hwnd().explain()?.0.cast(),
+            std::ptr::null_mut(),
+            x,
+            y,
+            size.width as i32,
+            size.height as i32,
+            SWP_NOACTIVATE | SWP_NOZORDER,
+        ) == 0
+        {
+            return Err(std::io::Error::last_os_error().to_string());
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        window.set_size(size).explain()?;
+        window.set_position(PhysicalPosition::new(x, y)).explain()?;
+    }
+    Ok(())
 }
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -291,7 +369,9 @@ pub fn widget_ready(app: AppHandle) -> AppResult<()> {
     state.ready.store(true, Ordering::Release);
     let win = app.get_webview_window("main").ok_or("Missing window")?;
     win.show().explain()?;
-    win.set_focus().explain()?;
+    if !state.collapsed.load(Ordering::Relaxed) {
+        win.set_focus().explain()?;
+    }
     if state.shortcut_failed.load(Ordering::Relaxed) {
         return Err(
             "Global shortcut unavailable. Open ClippO from the application menu or tray.".into(),

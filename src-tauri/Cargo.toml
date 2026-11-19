@@ -1,6 +1,6 @@
 [package]
 name = "clippo"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2021"
 authors = ["Hubertoink <Hubertoink@users.noreply.github.com>"]
 description = "Floating image and PDF compressor for Windows and Linux"
@@ -32,4 +32,6 @@ tempfile = "3"
 directories = "6"
 lopdf = { version = "0.38", default-features = false }
 [target.'cfg(windows)'.dependencies]
+webview2-com = "0.39"
+windows-core = "0.62"
 windows-sys = { version = "0.61", features = ["Win32_System_DataExchange", "Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_System_Com", "Win32_UI_Shell", "Win32_Storage_FileSystem"] }

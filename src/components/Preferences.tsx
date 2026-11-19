@@ -19,7 +19,7 @@ export function Preferences({ s, set, close, initial }: Props) {
     </div>
   );
   const toggle = (
-    key: "auto" | "watch" | "preserve" | "replace" | "compact" | "underMb",
+    key: "auto" | "watch" | "preserve" | "replace" | "compact" | "underMb" | "teardrop",
     label: string,
   ) =>
     row(
@@ -199,6 +199,7 @@ export function Preferences({ s, set, close, initial }: Props) {
         ) : (
           <>
             {toggle("compact", t("Compact view", "Kompaktansicht"))}
+            {native && toggle("teardrop", t("Top-edge teardrop", "Tropfen am oberen Bildschirmrand"))}
             {select(
               "theme",
               {
