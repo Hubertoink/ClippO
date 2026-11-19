@@ -29,8 +29,18 @@ use windows_sys::Win32::{
 pub fn show(app: &AppHandle) {
     if let Some(win) = app.get_webview_window("main") {
         let _ = win.show();
+        let _ = win.unminimize();
         let _ = win.set_focus();
         let _ = app.emit("widget-opened", ());
+    }
+}
+pub fn toggle(app: &AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        if win.is_visible().unwrap_or(false) && !win.is_minimized().unwrap_or(false) {
+            let _ = win.hide();
+        } else {
+            show(app);
+        }
     }
 }
 fn position_file(app: &AppHandle) -> Option<PathBuf> {

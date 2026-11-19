@@ -350,7 +350,7 @@ p {
 }
 .controls {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   align-items: center;
   margin: 18px 0 19px;
   gap: 23px;
@@ -988,7 +988,7 @@ footer {
 :root[data-native="true"] .controls {
   margin: 6px 0;
   gap: 10px;
-  grid-template-columns: 1.1fr 1fr;
+  grid-template-columns: 1fr;
 }
 :root[data-native="true"] .mode-control {
   flex-direction: row;

@@ -38,7 +38,7 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { LogicalSize } from "@tauri-apps/api/dpi";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Button, Toggle } from "./components/ui";
+import { Button } from "./components/ui";
 import { ResizeDimensions } from "./components/ResizeDimensions";
 import { Preferences } from "./components/Preferences";
 import {
@@ -175,11 +175,11 @@ export default function App() {
         .setSize(
           new LogicalSize(
             420,
-            preferences ? 420 : shortcuts ? 300 : s.compact ? 236 : 260,
+            preferences ? 420 : shortcuts ? 300 : s.compact ? 236 : result && !busy ? 300 : 260,
           ),
         )
         .catch(caught);
-  }, [preferences, s.compact, shortcuts]);
+  }, [preferences, s.compact, shortcuts, !!result, busy]);
   useEffect(() => {
     if (!modeMenu) return;
     const outside = (e: PointerEvent) => {
@@ -683,7 +683,7 @@ export default function App() {
                 <h1>{t("Keyboard shortcuts", "Tastenkürzel")}</h1>
               </div>
               {[
-                [t("Open ClippO", "ClippO öffnen"), "Ctrl + Shift + O"],
+                [t("Show / minimize ClippO", "ClippO anzeigen / minimieren"), "Ctrl + Shift + O"],
                 [t("Browse files", "Dateien wählen"), "Ctrl + O"],
                 [t("Paste image", "Bild einfügen"), "Ctrl + V"],
                 [t("Dismiss", "Schließen"), "Esc"],
@@ -1087,22 +1087,6 @@ export default function App() {
                         })}
                       </div>
                     )}
-                  </div>
-                  <div className="size-control">
-                    <div className="target-symbol">
-                      <Target />
-                    </div>
-                    <div>
-                      <span className="control-title">
-                        {t("Size target", "Größenziel")}
-                      </span>
-                      <strong>{t("Under 1 MB", "Unter 1 MB bringen")}</strong>
-                    </div>
-                    <Toggle
-                      label={t("Under 1 MB", "Unter 1 MB bringen")}
-                      checked={s.underMb}
-                      onChange={toggleMb}
-                    />
                   </div>
                 </div>
               </div>

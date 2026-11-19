@@ -1,10 +1,10 @@
 # ClippO
 
-Ein schwebendes Windows-Widget für Bilder, Screenshots und PDFs. Mit **Strg + Umschalt + O** öffnen, eine Datei aus dem Explorer ablegen oder mit **Strg + V** einfügen. ClippO zeigt die tatsächliche Dateigröße und Ersparnis, sobald die lokale Verarbeitung abgeschlossen ist.
+Ein schwebendes Windows-Widget für Bilder, Screenshots und PDFs. Mit **Strg + Umschalt + O** anzeigen oder minimieren, eine Datei aus dem Explorer ablegen oder mit **Strg + V** einfügen. ClippO zeigt die tatsächliche Dateigröße und Ersparnis, sobald die lokale Verarbeitung abgeschlossen ist.
 
 ## Starten
 
-Den Windows-x64-Installer findest du unter [GitHub Releases](https://github.com/Hubertoink/ClippO/releases/latest). Ein neuer Release-Build schreibt den Installer nach `src-tauri/target/release/bundle/nsis/`. Das Widget erscheint am Bildschirmrand. Schließen oder die Minus-Schaltfläche blendet es aus. Über das Tray-Symbol lässt es sich wieder öffnen oder vollständig beenden.
+Den Windows-x64-Installer findest du unter [GitHub Releases](https://github.com/Hubertoink/ClippO/releases/latest). Das Setup bringt den Microsoft-Offline-Installer für die benötigte WebView2-Laufzeit mit und installiert sie bei Bedarf. Ein neuer Release-Build schreibt den Installer nach `src-tauri/target/release/bundle/nsis/`. Das Widget erscheint am Bildschirmrand. Schließen oder die Minus-Schaltfläche blendet es aus. Über das Tray-Symbol lässt es sich wieder öffnen oder vollständig beenden.
 
 Für die Entwicklung werden Node.js 22.12 oder neuer, Rust mit MSVC-Toolchain, Visual Studio C++ Build Tools, das Windows SDK und WebView2 benötigt. Das Startskript lädt die festgelegten Codec-Versionen beim ersten Build herunter und prüft ihre SHA-256-Prüfsummen.
 
@@ -72,7 +72,7 @@ Die Oberfläche speichert ihre Einstellungen im lokalen WebView2-Profil. Fertige
 - Das Eingabelimit für Dateien beträgt 256 MiB. Der lokale Bilddecoder prüft zusätzlich die Bildabmessungen. Sehr große Bilder, komplexe PDFs und aggressive Zielgrößen können mehrere Durchläufe erfordern.
 - Bei Formularen, Annotationen und bestimmten erweiterten PDF-Strukturen nutzt ClippO den strukturerhaltenden Pfad. Das Subsetting eingebetteter Fonts benötigt Ghostscript. Signierte oder gesperrte PDFs melden einen Fehler.
 - Im Browser hängt die Clipboard-Freigabe vom Browser ab. Ctrl + V funktioniert auch über das normale Einfügeereignis. Bestehende Bildmetadaten können in der Windows-App erhalten werden.
-- Für das globale Öffnen verwendet diese Version Strg + Umschalt + O. Bei einem Tastenkonflikt zeigt sie einen Hinweis auf das Tray-Symbol. MP4, GIF und MOV sind Erweiterungspunkte.
+- Zum globalen Anzeigen und Minimieren verwendet diese Version Strg + Umschalt + O. Bei einem Tastenkonflikt zeigt sie einen Hinweis auf das Tray-Symbol. MP4, GIF und MOV sind Erweiterungspunkte.
 
 ### Prüfung unter Windows
 

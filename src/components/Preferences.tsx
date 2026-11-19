@@ -19,7 +19,7 @@ export function Preferences({ s, set, close, initial }: Props) {
     </div>
   );
   const toggle = (
-    key: "auto" | "watch" | "preserve" | "replace" | "compact",
+    key: "auto" | "watch" | "preserve" | "replace" | "compact" | "underMb",
     label: string,
   ) =>
     row(
@@ -148,6 +148,7 @@ export function Preferences({ s, set, close, initial }: Props) {
           </>
         ) : tab === "Compression" ? (
           <>
+            {toggle("underMb", t("Size target: under 1 MB", "Größenziel: unter 1 MB"))}
             {range("jpg", t("JPEG quality", "JPEG-Qualität"))}
             {range("webp", t("WebP quality", "WebP-Qualität"))}
             {range("png", t("PNG optimization", "PNG-Optimierung"), 6)}

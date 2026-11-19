@@ -21,7 +21,7 @@ fn main() {
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, _, e| {
                     if e.state == ShortcutState::Pressed {
-                        desktop::show(app)
+                        desktop::toggle(app)
                     }
                 })
                 .build(),
