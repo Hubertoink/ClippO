@@ -1,30 +1,35 @@
 use crate::engine::{self, AppResult, Explain, Options};
 use arboard::{Clipboard, ImageData};
 use serde::Serialize;
+#[cfg(windows)]
+use std::os::windows::{ffi::OsStrExt, fs::OpenOptionsExt};
+#[cfg(windows)]
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::{
     borrow::Cow,
     collections::HashMap,
     fs,
     hash::{DefaultHasher, Hasher},
     io::Read,
-    os::windows::{ffi::OsStrExt, fs::OpenOptionsExt},
     path::{Path, PathBuf},
-    sync::{
-        atomic::{AtomicBool, AtomicU32, Ordering},
-        Mutex,
-    },
+    sync::{atomic::AtomicBool, Mutex},
     time::{Duration, SystemTime},
 };
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_opener::OpenerExt;
 use tempfile::{tempdir, NamedTempFile};
+#[cfg(windows)]
 use windows_sys::Win32::Storage::FileSystem::ReplaceFileW;
+#[cfg(windows)]
 use windows_sys::Win32::System::DataExchange::GetClipboardSequenceNumber;
 
 #[derive(Default)]
 pub struct Session {
     jobs: Mutex<HashMap<String, Job>>,
+    #[cfg(windows)]
     pub clipboard_sequence: AtomicU32,
+    #[cfg(target_os = "linux")]
+    clipboard_owner: Mutex<Option<Clipboard>>,
     pub watching: AtomicBool,
     pub ready: AtomicBool,
     pub shortcut_failed: AtomicBool,
@@ -132,6 +137,7 @@ fn save_copy(job: &Job, dir: &Path) -> AppResult<PathBuf> {
     }
     Err("Choose another destination folder.".into())
 }
+#[cfg(windows)]
 fn replace(job: &Job) -> AppResult<()> {
     let path = job.original.as_ref().ok_or("No original file on disk.")?;
     if engine::ext(path) != engine::ext(&job.output) {
@@ -188,6 +194,34 @@ fn replace(job: &Job) -> AppResult<()> {
         return Err(error.to_string());
     }
     drop(original);
+    Ok(())
+}
+#[cfg(target_os = "linux")]
+fn replace(job: &Job) -> AppResult<()> {
+    use std::os::unix::fs::MetadataExt;
+    let path = job.original.as_ref().ok_or("No original file on disk.")?;
+    if engine::ext(path) != engine::ext(&job.output) {
+        return Err("Save the converted format as a copy.".into());
+    }
+    let mut original = fs::File::open(path).explain()?;
+    original.try_lock().explain()?;
+    let meta = original.metadata().explain()?;
+    let mut tmp =
+        NamedTempFile::new_in(path.parent().ok_or("Missing parent folder.")?).explain()?;
+    std::io::copy(&mut fs::File::open(&job.output).explain()?, &mut tmp).explain()?;
+    tmp.as_file()
+        .set_permissions(meta.permissions())
+        .explain()?;
+    tmp.as_file().sync_all().explain()?;
+    let current = fs::symlink_metadata(path).explain()?;
+    if !current.is_file()
+        || current.ino() != meta.ino()
+        || current.dev() != meta.dev()
+        || hash_file(&mut original)? != job.digest
+    {
+        return Err("The original changed after compression. Save a copy.".into());
+    }
+    tmp.persist(path).explain()?;
     Ok(())
 }
 fn process(
@@ -355,6 +389,7 @@ pub async fn compress_capture(app: AppHandle, id: String, options: Options) -> A
     .await
     .explain()?
 }
+#[cfg(windows)]
 fn classic_outlook() -> Option<PathBuf> {
     for root in ["ProgramFiles", "ProgramFiles(x86)"]
         .iter()
@@ -371,6 +406,17 @@ fn classic_outlook() -> Option<PathBuf> {
         }
     }
     None
+}
+fn remember_clipboard(state: &Session, _clipboard: Clipboard) -> AppResult<()> {
+    #[cfg(windows)]
+    state
+        .clipboard_sequence
+        .store(unsafe { GetClipboardSequenceNumber() }, Ordering::Relaxed);
+    #[cfg(target_os = "linux")]
+    {
+        *state.clipboard_owner.lock().explain()? = Some(_clipboard);
+    }
+    Ok(())
 }
 fn act(
     app: AppHandle,
@@ -390,14 +436,9 @@ fn act(
     let de = language == "de";
     let tr = |en: &str, ger: &str| if de { ger.to_string() } else { en.to_string() };
     let cb = || -> AppResult<()> {
-        Clipboard::new()
-            .explain()?
-            .set()
-            .file_list(&[&job.output])
-            .explain()?;
-        state
-            .clipboard_sequence
-            .store(unsafe { GetClipboardSequenceNumber() }, Ordering::Relaxed);
+        let mut clipboard = Clipboard::new().explain()?;
+        clipboard.set().file_list(&[&job.output]).explain()?;
+        remember_clipboard(&state, clipboard)?;
         Ok(())
     };
     match action.as_str() {
@@ -408,17 +449,15 @@ fn act(
         "copy" => {
             let tmp = tempdir().explain()?;
             let image = engine::as_png(&engines(&app)?, &job.output, tmp.path())?.to_rgba8();
-            Clipboard::new()
-                .explain()?
+            let mut clipboard = Clipboard::new().explain()?;
+            clipboard
                 .set_image(ImageData {
                     width: image.width() as usize,
                     height: image.height() as usize,
                     bytes: Cow::Owned(image.into_raw()),
                 })
                 .explain()?;
-            state
-                .clipboard_sequence
-                .store(unsafe { GetClipboardSequenceNumber() }, Ordering::Relaxed);
+            remember_clipboard(&state, clipboard)?;
             Ok(tr("Image copied", "Bild kopiert"))
         }
         "save" | "save-path" => {
@@ -448,10 +487,11 @@ fn act(
         "attachment" => {
             app.opener().reveal_item_in_dir(&job.output).explain()?;
             Ok(tr(
-                "Attachment selected in Explorer",
-                "Anhang im Explorer ausgewählt",
+                "Attachment shown in file manager",
+                "Anhang im Dateimanager angezeigt",
             ))
         }
+        #[cfg(windows)]
         "teams" => {
             cb()?;
             app.opener().open_url("msteams:", None::<&str>).explain()?;
@@ -460,6 +500,7 @@ fn act(
                 "Datei jetzt im Teams-Chat einfügen",
             ))
         }
+        #[cfg(windows)]
         "outlook" => {
             if let Some(exe) = classic_outlook() {
                 engine::hidden(&exe)

@@ -1,8 +1,9 @@
 [package]
 name = "clippo"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
-description = "Floating file compressor for Windows"
+authors = ["Hubertoink <Hubertoink@users.noreply.github.com>"]
+description = "Floating image and PDF compressor for Windows and Linux"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -25,4 +26,5 @@ notify = "8"
 tempfile = "3"
 directories = "6"
 lopdf = { version = "0.38", default-features = false }
+[target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_System_DataExchange", "Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_System_Com", "Win32_UI_Shell", "Win32_Storage_FileSystem"] }

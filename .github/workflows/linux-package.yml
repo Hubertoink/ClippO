@@ -1,0 +1,28 @@
+name: Linux package
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install build and desktop test dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev patchelf nasm imagemagick qpdf ghostscript xvfb xclip xdotool openbox dbus-x11
+      - run: npm ci
+      - run: npm run tauri -- build --bundles deb -- --locked
+      - run: cargo test --release --locked --manifest-path src-tauri/Cargo.toml
+      - name: Install and exercise the packaged app
+        run: |
+          sudo apt-get install -y ./src-tauri/target/release/bundle/deb/*.deb
+          dbus-run-session -- xvfb-run -a bash scripts/smoke-linux.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-amd64-deb
+          path: src-tauri/target/release/bundle/deb/*.deb
+          if-no-files-found: error

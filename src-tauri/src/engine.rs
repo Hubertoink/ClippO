@@ -3,7 +3,6 @@ use serde::Deserialize;
 use std::{
     fs,
     io::Cursor,
-    os::windows::process::CommandExt,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -83,9 +82,10 @@ pub fn supported(p: &Path) -> bool {
     )
 }
 pub fn hidden(exe: &Path) -> Command {
-    let mut c = Command::new(exe);
-    c.creation_flags(0x08000000);
-    c
+    let mut command = Command::new(exe);
+    #[cfg(windows)]
+    std::os::windows::process::CommandExt::creation_flags(&mut command, 0x08000000);
+    command
 }
 fn execute(command: &mut Command, qpdf: bool) -> AppResult<()> {
     let r = command.output().explain()?;
@@ -117,6 +117,24 @@ fn jpeg(image: &DynamicImage, quality: u8) -> AppResult<Vec<u8>> {
     out.write_scanlines(&rgb).explain()?;
     out.finish().explain()
 }
+fn image_tool(_engines: &Path, identify: bool) -> Command {
+    #[cfg(windows)]
+    {
+        let mut command = hidden(&_engines.join("magick/magick.exe"));
+        if identify {
+            command.arg("identify");
+        }
+        command
+    }
+    #[cfg(target_os = "linux")]
+    {
+        Command::new(if identify {
+            "/usr/bin/identify"
+        } else {
+            "/usr/bin/convert"
+        })
+    }
+}
 pub fn image_dimensions(input: &Path, engines: &Path) -> AppResult<(u32, u32)> {
     if !supported(input) || ext(input) == "pdf" {
         return Err("Expected an image.".into());
@@ -135,8 +153,8 @@ pub fn image_dimensions(input: &Path, engines: &Path) -> AppResult<(u32, u32)> {
             (w, h)
         });
     }
-    let output = hidden(&engines.join("magick/magick.exe"))
-        .args(["identify", "-ping", "-format", "%w %h %[orientation]"])
+    let output = image_tool(engines, true)
+        .args(["-ping", "-format", "%w %h %[orientation]"])
         .arg(format!("{}[0]", input.display()))
         .output()
         .explain()?;
@@ -196,7 +214,7 @@ fn magick(
     colors: u32,
     preserve: bool,
 ) -> AppResult<()> {
-    let mut c = hidden(&engines.join("magick/magick.exe"));
+    let mut c = image_tool(engines, false);
     c.args([
         "-limit", "memory", "256MiB", "-limit", "map", "512MiB", "-limit", "disk", "1GiB",
         "-limit", "time", "90",
@@ -345,6 +363,12 @@ fn images(
     }
     Ok(best)
 }
+#[cfg(target_os = "linux")]
+fn ghostscript() -> Option<PathBuf> {
+    let gs = PathBuf::from("/usr/bin/gs");
+    gs.is_file().then_some(gs)
+}
+#[cfg(windows)]
 fn ghostscript() -> Option<PathBuf> {
     let root = PathBuf::from(std::env::var_os("ProgramFiles")?).join("gs");
     let mut paths: Vec<_> = fs::read_dir(root)
@@ -511,7 +535,20 @@ fn pdf(
             prepared.save(&mid).explain()?;
         }
         let dest = work.join(format!("linearized-{pass}.pdf"));
+        #[cfg(windows)]
         let mut c = hidden(&engines.join("qpdf/qpdf.exe"));
+        #[cfg(target_os = "linux")]
+        let mut c = {
+            // Ubuntu 24.04 ships qpdf 11, predating its metadata removal switches.
+            if !s.preserve {
+                let mut document = lopdf::Document::load(&mid).explain()?;
+                document.trailer.remove(b"Info");
+                document.catalog_mut().explain()?.remove(b"Metadata");
+                document.prune_objects();
+                document.save(&mid).explain()?;
+            }
+            Command::new("/usr/bin/qpdf")
+        };
         c.args([
             "--linearize",
             "--object-streams=generate",
@@ -520,9 +557,11 @@ fn pdf(
             "--remove-unreferenced-resources=yes",
         ]);
         if gs.is_none() && !s.preserve {
-            c.arg("--optimize-images")
-                .arg(format!("--jpeg-quality={q}"));
+            c.arg("--optimize-images");
+            #[cfg(windows)]
+            c.arg(format!("--jpeg-quality={q}"));
         }
+        #[cfg(windows)]
         if !s.preserve {
             c.args(["--remove-info", "--remove-metadata"]);
         }

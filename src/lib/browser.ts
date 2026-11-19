@@ -81,8 +81,8 @@ export async function compressBrowser(
     if (s.preserve)
       throw new Error(
         s.language === "de"
-          ? "Metadaten-Erhalt ist in der Windows-App verfügbar."
-          : "Use the Windows app to preserve image metadata.",
+          ? "Metadaten-Erhalt ist in der Desktop-App verfügbar."
+          : "Use the desktop app to preserve image metadata.",
       );
     const image = await readImage(file);
     const fmt =

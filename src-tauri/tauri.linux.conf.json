@@ -1,0 +1,12 @@
+{
+  "bundle": {
+    "targets": ["deb"],
+    "category": "GraphicsAndDesign",
+    "resources": ["resources/licenses/*"],
+    "linux": {
+      "deb": {
+        "depends": ["libgtk-3-0", "libwebkit2gtk-4.1-0", "libayatana-appindicator3-1", "libxdo3", "imagemagick", "qpdf", "ghostscript"]
+      }
+    }
+  }
+}

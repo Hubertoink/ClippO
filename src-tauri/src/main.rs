@@ -1,4 +1,4 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 mod desktop;
 mod engine;
 mod jobs;
@@ -36,15 +36,6 @@ fn main() {
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             desktop::show(app)
         }))
-        .plugin(
-            tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(|app, _, e| {
-                    if e.state == ShortcutState::Pressed {
-                        desktop::toggle(app)
-                    }
-                })
-                .build(),
-        )
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
@@ -77,7 +68,15 @@ fn main() {
                     }
                 })
                 .build(app)?;
-            let conflict = app.global_shortcut().register("Ctrl+Shift+O").is_err();
+            let shortcut_plugin = tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, _, e| {
+                    if e.state == ShortcutState::Pressed {
+                        desktop::toggle(app)
+                    }
+                })
+                .build();
+            let conflict = app.handle().plugin(shortcut_plugin).is_err()
+                || app.global_shortcut().register("Ctrl+Shift+O").is_err();
             app.state::<jobs::Session>()
                 .shortcut_failed
                 .store(conflict, Ordering::Relaxed);

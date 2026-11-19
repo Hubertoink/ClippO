@@ -4,17 +4,19 @@ use crate::{
 };
 use notify::{EventKind, RecursiveMode, Watcher};
 use serde::Serialize;
+#[cfg(windows)]
+use std::os::windows::ffi::OsStringExt;
 use std::{
     collections::HashMap,
     fs,
     io::Write,
-    os::windows::ffi::OsStringExt,
     path::PathBuf,
     sync::{atomic::Ordering, mpsc},
     thread,
     time::{Duration, Instant, SystemTime},
 };
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, WebviewWindow};
+#[cfg(windows)]
 use windows_sys::Win32::{
     System::{
         Com::CoTaskMemFree,
@@ -124,6 +126,9 @@ fn capture(app: &AppHandle, path: Option<PathBuf>) {
     if let Some(win) = app.get_webview_window("main") {
         let hidden = !win.is_visible().unwrap_or(true);
         if hidden {
+            #[cfg(target_os = "linux")]
+            let _ = win.show();
+            #[cfg(windows)]
             if let Ok(hwnd) = win.hwnd() {
                 unsafe {
                     ShowWindow(hwnd.0 as _, SW_SHOWNOACTIVATE);
@@ -139,6 +144,7 @@ fn capture(app: &AppHandle, path: Option<PathBuf>) {
         );
     }
 }
+#[cfg(windows)]
 fn screenshot_dir() -> Option<PathBuf> {
     unsafe {
         let mut p = std::ptr::null_mut();
@@ -157,6 +163,16 @@ fn screenshot_dir() -> Option<PathBuf> {
         CoTaskMemFree(p.cast());
         Some(path)
     }
+}
+#[cfg(target_os = "linux")]
+fn screenshot_dir() -> Option<PathBuf> {
+    let dirs = directories::UserDirs::new()?;
+    Some(
+        dirs.picture_dir()
+            .map(PathBuf::from)
+            .unwrap_or_else(|| dirs.home_dir().join("Pictures"))
+            .join("Screenshots"),
+    )
 }
 fn watch_folder(app: AppHandle) {
     let Some(folder) = screenshot_dir().or_else(|| {
@@ -242,7 +258,11 @@ fn watch_folder(app: AppHandle) {
 pub fn monitor(app: &AppHandle) {
     let app1 = app.clone();
     thread::spawn(move || watch_folder(app1));
-    let app2 = app.clone();
+    #[cfg(windows)]
+    monitor_clipboard(app.clone());
+}
+#[cfg(windows)]
+fn monitor_clipboard(app2: AppHandle) {
     thread::spawn(move || {
         let mut previous = unsafe { GetClipboardSequenceNumber() };
         loop {
@@ -279,7 +299,9 @@ pub fn widget_ready(app: AppHandle) -> AppResult<()> {
     let win = app.get_webview_window("main").ok_or("Missing window")?;
     win.show().explain()?;
     if state.shortcut_failed.load(Ordering::Relaxed) {
-        return Err("Ctrl + Shift + O is in use. Open ClippO from the tray.".into());
+        return Err(
+            "Global shortcut unavailable. Open ClippO from the application menu or tray.".into(),
+        );
     }
     Ok(())
 }

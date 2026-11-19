@@ -46,6 +46,7 @@ import {
   estimated,
   extensions,
   native,
+  linuxDesktop,
   pretty,
   readSettings,
   type Input,
@@ -1150,21 +1151,21 @@ export default function App() {
                             ],
                           ]
                         : []),
-                      [
+                      ...(!linuxDesktop ? [[
                         Mail,
                         t("Open Outlook draft", "Outlook-Entwurf öffnen"),
                         "outlook",
-                      ],
+                      ]] : []),
                       [
                         Paperclip,
                         t("Prepare attachment", "Anhang vorbereiten"),
                         "attachment",
                       ],
-                      [
+                      ...(!linuxDesktop ? [[
                         UsersRound,
                         t("Copy for Teams", "Für Teams kopieren"),
                         "teams",
-                      ],
+                      ]] : []),
                     ].map(([Icon, label, key]) => {
                       const I = Icon as typeof Copy;
                       return (
@@ -1220,7 +1221,7 @@ export default function App() {
                 <button
                   type="button"
                   className="notice-location"
-                  title={t("Show in Explorer", "Im Explorer anzeigen")}
+                  title={t("Show in folder", "Im Ordner anzeigen")}
                   onClick={() =>
                     invoke("reveal_saved", { path: noticePath })
                       .then(() => setNotice(""))

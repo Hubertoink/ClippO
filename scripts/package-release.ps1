@@ -1,4 +1,4 @@
-param([string]$TargetDir = $env:CARGO_TARGET_DIR, [switch]$Signed)
+param([string]$TargetDir = $env:CARGO_TARGET_DIR, [switch]$Signed, [string]$LinuxPackage)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 if (!$TargetDir) { $TargetDir = Join-Path $root 'src-tauri/target' }
@@ -36,6 +36,16 @@ if ($Signed) {
       signature = $signature
       url = "https://github.com/Hubertoink/ClippO/releases/download/v$version/$name"
     } }
+  }
+  if ($LinuxPackage) {
+    $deb = Get-Item -LiteralPath $LinuxPackage
+    if ($deb.Name -cne "ClippO_${version}_amd64.deb") { throw "Expected ClippO_${version}_amd64.deb" }
+    $linuxSignature = (Get-Content -LiteralPath "$($deb.FullName).sig" -Raw).Trim()
+    if (!$linuxSignature) { throw 'Missing Linux updater signature' }
+    $manifest.platforms['linux-x86_64-deb'] = @{
+      signature = $linuxSignature
+      url = "https://github.com/Hubertoink/ClippO/releases/download/v$version/$($deb.Name)"
+    }
   }
   [IO.File]::WriteAllText((Join-Path $output 'latest.json'), ($manifest | ConvertTo-Json -Depth 5), [Text.UTF8Encoding]::new($false))
 }

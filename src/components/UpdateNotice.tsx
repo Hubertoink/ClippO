@@ -3,6 +3,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { Download, X } from "lucide-react";
 
+import { linuxDesktop } from "../lib/types";
+
 type Props = {
   german: boolean;
   busy: boolean;
@@ -10,7 +12,7 @@ type Props = {
   beginInstall: () => boolean;
   endInstall: () => void;
 };
-type Phase = "available" | "downloading" | "ready" | "installing";
+type Phase = "available" | "downloading" | "ready" | "installing" | "installed";
 
 export function UpdateNotice({
   german,
@@ -74,6 +76,10 @@ export function UpdateNotice({
         setPhase("installing");
         try {
           await update.install();
+          if (linuxDesktop) {
+            endInstall();
+            setPhase("installed");
+          }
         } catch (e) {
           endInstall();
           setPhase("available");
@@ -106,7 +112,9 @@ export function UpdateNotice({
   };
   const label = error
     ? t("Update fehlgeschlagen", "Update failed")
-    : phase === "downloading"
+    : phase === "installed"
+      ? t("Installiert. ClippO neu starten.", "Installed. Restart ClippO.")
+      : phase === "downloading"
       ? t("Wird geladen…", "Downloading…") +
         (percent === null ? "" : " " + percent + " %")
       : phase === "installing"
@@ -127,7 +135,7 @@ export function UpdateNotice({
       <span role="status">
         {label} <b>v{update.version}</b>
       </span>
-      {!working && (
+      {!working && phase !== "installed" && (
         <button
           className="update-action"
           disabled={phase === "ready" && busy}

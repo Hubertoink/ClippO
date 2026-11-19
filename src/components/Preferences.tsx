@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { ArrowLeft, FolderOpen, X } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
-import { native, type Settings } from "../lib/types";
+import { linuxDesktop, native, type Settings } from "../lib/types";
 import { Button, Toggle } from "./ui";
 type Props = {
   s: Settings;
@@ -94,13 +94,18 @@ export function Preferences({ s, set, close, initial }: Props) {
       <div className="pref-body">
         {tab === "General" ? (
           <>
+            {select(
+              "language",
+              { en: "English", de: "Deutsch" },
+              t("Language", "Sprache"),
+            )}
             {native && (
               <>
                 {toggle(
                   "watch",
                   t("Detect screenshots", "Screenshots erkennen"),
                 )}
-                {toggle(
+                {!linuxDesktop && toggle(
                   "auto",
                   t(
                     "Auto-compress clipboard images",
@@ -140,11 +145,6 @@ export function Preferences({ s, set, close, initial }: Props) {
               </>
             )}
             {toggle("preserve", t("Preserve metadata", "Metadaten erhalten"))}
-            {select(
-              "language",
-              { en: "English", de: "Deutsch" },
-              t("Language", "Sprache"),
-            )}
           </>
         ) : tab === "Compression" ? (
           <>

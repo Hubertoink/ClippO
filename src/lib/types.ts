@@ -1,6 +1,7 @@
 import { isTauri } from "@tauri-apps/api/core";
 
 export const native = isTauri();
+export const linuxDesktop = native && /Linux/i.test(navigator.platform);
 export type Mode = "Smart" | "Balanced" | "Maximum" | "Custom";
 export type Settings = {
   resizePercent?: number;
@@ -39,7 +40,7 @@ export const defaults: Settings = {
   compact: false,
   theme: "Dark",
   motion: "Full",
-  language: navigator.language.startsWith("de") ? "de" : "en",
+  language: navigator.language.toLowerCase().split("-")[0] === "de" ? "de" : "en",
 };
 export function readSettings(): Settings {
   try {
