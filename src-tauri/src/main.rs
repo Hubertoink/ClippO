@@ -92,7 +92,9 @@ fn main() {
         .on_window_event(|win, event| match event {
             WindowEvent::CloseRequested { api, .. } => {
                 api.prevent_close();
-                let _ = win.hide();
+                if let Some(widget) = win.get_webview_window(win.label()) {
+                    let _ = desktop::hide_widget(widget);
+                }
             }
             WindowEvent::Moved(pos) => desktop::remember(win.app_handle(), pos.x, pos.y),
             WindowEvent::Resized(_) => desktop::keep_visible(win),
@@ -110,6 +112,7 @@ fn main() {
             jobs::reveal_saved,
             desktop::set_detection,
             desktop::layout_widget,
+            desktop::hide_widget,
             desktop::widget_ready
         ])
         .run(tauri::generate_context!())

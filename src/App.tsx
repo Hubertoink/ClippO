@@ -413,7 +413,7 @@ export default function App() {
         else if (st.preferences) setPref("");
         else if (st.shortcuts) setShortcuts(false);
         else if (native && st.s.teardrop) collapse();
-        else if (native) void getCurrentWebviewWindow().hide();
+        else if (native) void invoke("hide_widget").catch(caught);
         else setDetected(null);
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "o") {
@@ -529,7 +529,7 @@ export default function App() {
             hideTimer.current = setTimeout(() => {
               setDetected(null);
               if (payload.wasHidden && !locked.current)
-                void getCurrentWebviewWindow().hide();
+                void invoke("hide_widget").catch(caught);
             }, 6500);
           },
         ),
@@ -746,7 +746,7 @@ export default function App() {
                   variant="icon"
                   title={docked ? t("Collapse to teardrop", "Zum Tropfen einklappen") : t("Hide widget", "Widget ausblenden")}
                   aria-label={docked ? t("Collapse to teardrop", "Zum Tropfen einklappen") : t("Hide widget", "Widget ausblenden")}
-                  onClick={() => docked ? collapse() : getCurrentWebviewWindow().hide()}
+                  onClick={() => docked ? collapse() : invoke("hide_widget").catch(caught)}
                 >
                   <Minus />
                 </Button>

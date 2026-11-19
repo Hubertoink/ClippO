@@ -33,12 +33,27 @@ pub fn show(app: &AppHandle) {
         let _ = app.emit("widget-opened", ());
     }
 }
+#[tauri::command]
+pub fn hide_widget(window: WebviewWindow) -> tauri::Result<()> {
+    window.hide()?;
+    #[cfg(windows)]
+    if window.is_visible()? {
+        // A non-activating screenshot popup can be visible before Tauri has
+        // marked the window as shown. Hide the native popup in that case.
+        use windows_sys::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_HIDE};
+        unsafe {
+            ShowWindow(window.hwnd()?.0.cast(), SW_HIDE);
+        }
+    }
+    Ok(())
+}
+
 pub fn toggle(app: &AppHandle) {
     if let Some(win) = app.get_webview_window("main") {
         if win.is_visible().unwrap_or(false) && !win.is_minimized().unwrap_or(false) {
             let state = app.state::<Session>();
             if !state.docked.load(Ordering::Relaxed) {
-                let _ = win.hide();
+                let _ = hide_widget(win);
             } else if state.collapsed.load(Ordering::Relaxed) {
                 show(app);
             } else {
@@ -201,9 +216,7 @@ fn capture(app: &AppHandle, path: Option<PathBuf>) {
     if let Some(win) = app.get_webview_window("main") {
         let hidden = !win.is_visible().unwrap_or(true);
         if hidden {
-            // The window is configured with focus=false so notification pops do
-            // not take focus. Use the runtime for both show and hide operations.
-            if win.show().is_err() {
+            if show_capture(&win).is_err() {
                 return;
             }
         }
@@ -215,6 +228,20 @@ fn capture(app: &AppHandle, path: Option<PathBuf>) {
             },
         );
     }
+}
+
+#[cfg(windows)]
+fn show_capture(win: &WebviewWindow) -> tauri::Result<()> {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_SHOWNOACTIVATE};
+    unsafe {
+        ShowWindow(win.hwnd()?.0.cast(), SW_SHOWNOACTIVATE);
+    }
+    Ok(())
+}
+
+#[cfg(not(windows))]
+fn show_capture(win: &WebviewWindow) -> tauri::Result<()> {
+    win.show()
 }
 #[cfg(windows)]
 fn screenshot_dir() -> Option<PathBuf> {
@@ -393,6 +420,23 @@ mod tests {
         state.watching.store(true, Ordering::Relaxed);
         state.ready.store(true, Ordering::Release);
 
+        // A CI desktop may have no foreground app before the first window is
+        // shown. Give the screenshot notification an existing window to leave focused.
+        let foreground = tauri::WebviewWindowBuilder::new(
+            app,
+            "foreground-fixture",
+            tauri::WebviewUrl::External("about:blank".parse().unwrap()),
+        )
+        .title("ClippO focus test")
+        .position(-3000., -3000.)
+        .inner_size(120., 80.)
+        .skip_taskbar(true)
+        .build()
+        .explain()?;
+        foreground.set_focus().explain()?;
+        if unsafe { GetForegroundWindow() } == win.hwnd().explain()?.0 {
+            return Err("Could not establish the foreground test fixture".into());
+        }
         for from_folder in [false, true] {
             capture(app, from_folder.then(|| PathBuf::from("Screenshot.png")));
             if !win.is_visible().explain()? {
@@ -404,7 +448,7 @@ mod tests {
             if from_folder {
                 toggle(app); // global shortcut handler
             } else {
-                win.hide().explain()?; // same window API as the minus button
+                hide_widget(win.clone()).explain()?; // same command as the minus button
             }
             if win.is_visible().explain()? {
                 return Err("Widget stayed visible after dismissing the screenshot".into());
