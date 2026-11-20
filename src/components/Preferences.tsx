@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { ArrowLeft, FolderOpen, X } from "lucide-react";
+import { ArrowLeft, Check, FolderOpen, X } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import type { useUpdateCheck } from "./UpdateNotice";
@@ -42,6 +42,7 @@ export function Preferences({ s, set, close, initial, updateStatus, checkUpdates
   }
   const t = (en: string, de: string) => (s.language === "de" ? de : en);
   const launchLabel = t("Start ClippO at login", "ClippO bei Anmeldung starten");
+  const currentLabel = t("ClippO is up to date.", "ClippO ist auf dem neuesten Stand.");
   const row = (label: string, el: ReactNode) => (
     <div className="pref-row">
       <span>{label}</span>
@@ -135,13 +136,20 @@ export function Preferences({ s, set, close, initial, updateStatus, checkUpdates
                   disabled={autostart === null || saving} onChange={changeAutostart} />)}
                 {autostartError && <p role="alert">{t("Couldn’t access the autostart setting.", "Zugriff auf die Autostart-Einstellung fehlgeschlagen.")}</p>}
                 {row(t("App updates", "App-Updates"),
-                  <Button variant="secondary" disabled={updateStatus === "checking" || updateStatus === "available"} onClick={checkUpdates}>
-                    {updateStatus === "checking" ? t("Checking…", "Suche läuft…") : t("Check for updates", "Nach Updates suchen")}
-                  </Button>)}
-                <div role="status">
-                  {updateStatus === "current" && t("ClippO is up to date.", "ClippO ist auf dem neuesten Stand.")}
-                  {updateStatus === "error" && t("Update check failed. Please try again.", "Updatesuche fehlgeschlagen. Bitte erneut versuchen.")}
-                </div>
+                  <div className="pref-update">
+                    <span role="status">
+                      {updateStatus === "current" && (
+                        <span title={currentLabel}>
+                          <Check size={15} aria-hidden="true" />
+                          <span className="sr-only">{currentLabel}</span>
+                        </span>
+                      )}
+                    </span>
+                    <button disabled={updateStatus === "checking" || updateStatus === "available"} onClick={checkUpdates}>
+                      {updateStatus === "checking" ? t("Checking…", "Suche läuft…") : t("Check for updates", "Nach Updates suchen")}
+                    </button>
+                  </div>)}
+                {updateStatus === "error" && <p role="alert">{t("Update check failed. Please try again.", "Updatesuche fehlgeschlagen. Bitte erneut versuchen.")}</p>}
                 {toggle(
                   "watch",
                   t("Detect screenshots", "Screenshots erkennen"),

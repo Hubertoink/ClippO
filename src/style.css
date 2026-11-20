@@ -88,6 +88,7 @@ button:disabled {
 .view-title,
 .sheet-title,
 .slider,
+.pref-update,
 .folder,
 .folder button,
 .result-size,
@@ -721,6 +722,7 @@ footer {
 .pref-row select,
 .pref-row input[type="number"],
 .pref-row kbd,
+.pref-update button,
 .folder button {
   background: var(--field);
   color: var(--text);
@@ -746,6 +748,12 @@ footer {
   width: 24px;
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+.pref-update {
+  gap: 6px;
+}
+.pref-update button:disabled {
+  opacity: 0.5;
 }
 .folder {
   gap: 4px;
