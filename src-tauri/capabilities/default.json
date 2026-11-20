@@ -9,6 +9,7 @@
     "core:window:allow-hide",
     "core:window:allow-set-size",
     "dialog:allow-open",
+    "autostart:default",
     "updater:allow-check",
     "updater:allow-download",
     "updater:allow-install"

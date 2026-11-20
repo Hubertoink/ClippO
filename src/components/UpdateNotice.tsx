@@ -6,62 +6,75 @@ import { Download, X } from "lucide-react";
 import { linuxDesktop } from "../lib/types";
 
 type Props = {
+  update: Update;
+  portable: boolean;
+  dismiss: () => void;
   german: boolean;
   busy: boolean;
-  onVisible: (visible: boolean) => void;
   beginInstall: () => boolean;
   endInstall: () => void;
 };
 type Phase = "available" | "downloading" | "ready" | "installing" | "installed";
 
-export function UpdateNotice({
-  german,
-  busy,
-  onVisible,
-  beginInstall,
-  endInstall,
-}: Props) {
+export function useUpdateCheck(enabled: boolean) {
+  const [request, setRequest] = useState(0);
+  const [status, setStatus] = useState<"checking" | "current" | "available" | "error" | "idle">("checking");
   const [update, setUpdate] = useState<Update | null>(null);
   const [portable, setPortable] = useState(false);
-  const [phase, setPhase] = useState<Phase>("available");
-  const [percent, setPercent] = useState<number | null>(null);
-  const [error, setError] = useState(false);
-  const active = useRef(false);
+  useEffect(() => () => { void update?.close().catch(() => {}); }, [update]);
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
     let resource: Update | null = null;
-    async function checkAtStartup() {
+    async function checkVersion() {
       try {
         resource = await check({ timeout: 10000 });
-        if (!resource) return;
+        if (cancelled) {
+          await resource?.close();
+          return;
+        }
+        if (!resource) {
+          setStatus("current");
+          return;
+        }
+        const isPortable = await invoke<boolean>("portable_build");
         if (cancelled) {
           await resource.close();
           return;
         }
-        const isPortable = await invoke<boolean>("portable_build");
-        if (cancelled) return;
         setPortable(isPortable);
         setUpdate(resource);
-        onVisible(true);
+        setStatus("available");
       } catch (err) {
+        await resource?.close().catch(() => {});
+        if (!cancelled) setStatus("error");
         console.warn("ClippO update check:", String(err));
       }
     }
-    void checkAtStartup();
+    void checkVersion();
     return () => {
       cancelled = true;
-      if (resource) void resource.close().catch(() => {});
     };
-  }, [onVisible]);
-  if (!update) return null;
+  }, [enabled, request]);
+  const checkAgain = () => {
+    if (status === "checking" || update) return;
+    setStatus("checking");
+    setRequest(previous => previous + 1);
+  };
+  const dismiss = () => {
+    setUpdate(null);
+    setStatus("idle");
+  };
+  return { update, portable, status, checkAgain, dismiss };
+}
+
+export function UpdateNotice({ update, portable, dismiss, german, busy, beginInstall, endInstall }: Props) {
+  const [phase, setPhase] = useState<Phase>("available");
+  const [percent, setPercent] = useState<number | null>(null);
+  const [error, setError] = useState(false);
+  const active = useRef(false);
   const t = (de: string, en: string) => (german ? de : en);
   const working = phase === "downloading" || phase === "installing";
-  const dismiss = () => {
-    if (active.current) return;
-    setUpdate(null);
-    onVisible(false);
-    void update.close().catch(() => {});
-  };
   const advance = async () => {
     if (active.current) return;
     active.current = true;
@@ -149,7 +162,7 @@ export function UpdateNotice({
           className="update-later"
           aria-label={t("Später", "Later")}
           title={t("Später", "Later")}
-          onClick={dismiss}
+          onClick={() => { if (!active.current) dismiss(); }}
         >
           <X size={14} />
         </button>

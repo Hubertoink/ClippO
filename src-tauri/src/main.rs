@@ -40,6 +40,7 @@ fn main() {
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             desktop::show(app)
         }))
+        .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())

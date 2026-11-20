@@ -39,7 +39,7 @@ import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Button } from "./components/ui";
 import { ResizeDimensions } from "./components/ResizeDimensions";
-import { UpdateNotice } from "./components/UpdateNotice";
+import { UpdateNotice, useUpdateCheck } from "./components/UpdateNotice";
 import { Preferences } from "./components/Preferences";
 import {
   estimated,
@@ -138,7 +138,8 @@ export default function App() {
     action: "resize" | "convert";
     files: Input[];
   } | null>(null);
-  const [updateVisible, setUpdateVisible] = useState(false);
+  const updates = useUpdateCheck(native);
+  const updateVisible = !!updates.update;
   const [dockOpen, setDockOpen] = useState(false);
   const docked = native && s.teardrop;
   const collapsed = docked && !(dockOpen || drag || busy || preferences || edit || shortcuts || detected);
@@ -753,11 +754,13 @@ export default function App() {
               )}
             </div>
           </header>
-          {native && (
+          {updates.update && (
             <UpdateNotice
+              update={updates.update}
+              portable={updates.portable}
+              dismiss={updates.dismiss}
               german={s.language === "de"}
               busy={busy}
-              onVisible={setUpdateVisible}
               beginInstall={() => {
                 if (locked.current || installing.current) return false;
                 installing.current = true;
@@ -782,6 +785,8 @@ export default function App() {
               s={s}
               set={set}
               initial={preferences}
+              updateStatus={updates.status}
+              checkUpdates={updates.checkAgain}
               close={() => setPref("")}
             />
           ) : shortcuts ? (

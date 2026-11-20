@@ -1,6 +1,8 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ArrowLeft, FolderOpen, X } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
+import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
+import type { useUpdateCheck } from "./UpdateNotice";
 import { linuxDesktop, native, type Settings } from "../lib/types";
 import { Button, Toggle } from "./ui";
 type Props = {
@@ -8,10 +10,38 @@ type Props = {
   set: (v: Partial<Settings>) => void;
   close: () => void;
   initial: string;
+  updateStatus: ReturnType<typeof useUpdateCheck>["status"];
+  checkUpdates: () => void;
 };
-export function Preferences({ s, set, close, initial }: Props) {
+export function Preferences({ s, set, close, initial, updateStatus, checkUpdates }: Props) {
   const [tab, setTab] = useState(initial);
+  const [autostart, setAutostart] = useState<boolean | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [autostartError, setAutostartError] = useState(false);
+  useEffect(() => {
+    if (!native) return;
+    let mounted = true;
+    isEnabled().then(value => {
+      if (mounted) setAutostart(value);
+    }).catch(() => {
+      if (mounted) setAutostartError(true);
+    });
+    return () => { mounted = false; };
+  }, []);
+  async function changeAutostart(value: boolean) {
+    setSaving(true);
+    setAutostartError(false);
+    try {
+      await (value ? enable() : disable());
+      setAutostart(value);
+    } catch {
+      setAutostartError(true);
+    } finally {
+      setSaving(false);
+    }
+  }
   const t = (en: string, de: string) => (s.language === "de" ? de : en);
+  const launchLabel = t("Start ClippO at login", "ClippO bei Anmeldung starten");
   const row = (label: string, el: ReactNode) => (
     <div className="pref-row">
       <span>{label}</span>
@@ -101,6 +131,17 @@ export function Preferences({ s, set, close, initial }: Props) {
             )}
             {native && (
               <>
+                {row(launchLabel, <Toggle label={launchLabel} checked={autostart ?? false}
+                  disabled={autostart === null || saving} onChange={changeAutostart} />)}
+                {autostartError && <p role="alert">{t("Couldn’t access the autostart setting.", "Zugriff auf die Autostart-Einstellung fehlgeschlagen.")}</p>}
+                {row(t("App updates", "App-Updates"),
+                  <Button variant="secondary" disabled={updateStatus === "checking" || updateStatus === "available"} onClick={checkUpdates}>
+                    {updateStatus === "checking" ? t("Checking…", "Suche läuft…") : t("Check for updates", "Nach Updates suchen")}
+                  </Button>)}
+                <div role="status">
+                  {updateStatus === "current" && t("ClippO is up to date.", "ClippO ist auf dem neuesten Stand.")}
+                  {updateStatus === "error" && t("Update check failed. Please try again.", "Updatesuche fehlgeschlagen. Bitte erneut versuchen.")}
+                </div>
                 {toggle(
                   "watch",
                   t("Detect screenshots", "Screenshots erkennen"),
