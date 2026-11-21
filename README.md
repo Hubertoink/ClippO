@@ -14,8 +14,8 @@ Choose a package from [GitHub Releases](https://github.com/Hubertoink/ClippO/rel
 | --- | --- | --- |
 | Windows x64 | `*-setup.exe` | Run the installer for your Windows account. |
 | Windows x64, portable | `*-portable.zip` | Extract the whole archive and run `clippo.exe` next to `resources`. |
-| Omarchy Quattro / Arch Linux, x86-64 | `*.pkg.tar.zst` | Run `sudo pacman -U ./clippo-0.9.0-1-x86_64.pkg.tar.zst` and open **ClippO** in the app launcher. |
-| Ubuntu 24.04 LTS, x86-64 | `*_amd64.deb` | In the download folder, run `sudo apt install ./ClippO_0.9.0_amd64.deb`. Open **ClippO** from the application menu. |
+| Omarchy Quattro / Arch Linux, x86-64 | `*.pkg.tar.zst` | Run `sudo pacman -U ./clippo-0.9.1-1-x86_64.pkg.tar.zst` and open **ClippO** in the app launcher. |
+| Ubuntu 24.04 LTS, x86-64 | `*_amd64.deb` | In the download folder, run `sudo apt install ./ClippO_0.9.1_amd64.deb`. Open **ClippO** from the application menu. |
 
 Both Windows editions require the Microsoft Edge WebView2 Runtime. On Ubuntu, APT installs the runtime dependencies, including WebKitGTK, ImageMagick, qpdf and Ghostscript.
 

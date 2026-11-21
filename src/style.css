@@ -638,6 +638,31 @@ footer {
 .action-sheet > button {
   font-size: 12px;
 }
+:is(.preferences, .action-sheet)::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+:is(.preferences, .action-sheet)::-webkit-scrollbar-track {
+  background: transparent;
+}
+:is(.preferences, .action-sheet)::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--accent) 50%, transparent);
+  border-radius: 99px;
+}
+:is(.preferences, .action-sheet)::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+:is(.preferences, .action-sheet)::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+@supports not selector(::-webkit-scrollbar) {
+  :is(.preferences, .action-sheet) {
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent) transparent;
+  }
+}
 .sheet-title {
   justify-content: space-between;
   padding-left: 9px;

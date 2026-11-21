@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { motion, MotionConfig, useReducedMotion, animate } from "motion/react";
 import {
   ArrowLeft,
@@ -61,6 +61,13 @@ type DropAction = "compress" | "resize" | "convert";
 const isImageName = (name: string) =>
   imageExtensions.includes(name.split(".").pop()?.toLowerCase() || "");
 const windowsDrop = native && !linuxDesktop;
+// The OS resizes the 64 × 24 dock window asynchronously after an open request.
+const handleViewport = window.matchMedia("(max-width: 80px), (max-height: 40px)");
+function subscribeHandleViewport(update: () => void) {
+  handleViewport.addEventListener("change", update);
+  return () => handleViewport.removeEventListener("change", update);
+}
+const isHandleViewport = () => handleViewport.matches;
 type ExplorerWebview = {
   postMessageWithAdditionalObjects?: (message: string, files: File[]) => void;
 };
@@ -145,6 +152,8 @@ export default function App() {
   const [dockOpen, setDockOpen] = useState(false);
   const docked = native && s.teardrop;
   const collapsed = docked && !(dockOpen || drag || busy || preferences || edit || shortcuts || detected);
+  const handleSized = useSyncExternalStore(subscribeHandleViewport, isHandleViewport);
+  const showHandle = docked && (collapsed || handleSized);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const clearLeave = () => clearTimeout(leaveTimer.current);
   const collapse = () => {
@@ -645,7 +654,7 @@ export default function App() {
       <main
         className={
           "desktop " + (s.compact ? "compact " : "") + (off ? "no-motion " : "") +
-          (docked ? (collapsed ? "dock-resting" : "dock-expanded") : "") +
+          (docked ? (showHandle ? "dock-resting" : "dock-expanded") : "") +
           (s.motion === "Subtle" ? " subtle-motion" : "")
         }
         onDragEnter={(e) => {
@@ -710,7 +719,7 @@ export default function App() {
           onPointerDown={interact}
           onPointerEnter={interact}
         >
-          {collapsed && <button className="teardrop-handle"
+          {showHandle && <button className="teardrop-handle"
             aria-label={t("Open ClippO", "ClippO öffnen")}
             title={t("Drop a file or click to open ClippO", "Datei ablegen oder ClippO per Klick öffnen")}
             onClick={() => setDockOpen(true)}><ChevronsDownUp aria-hidden="true" /></button>}
