@@ -2,6 +2,7 @@ import { isTauri } from "@tauri-apps/api/core";
 
 export const native = isTauri();
 export const linuxDesktop = native && /Linux/i.test(navigator.platform);
+export const pacmanBuild = linuxDesktop && import.meta.env.VITE_CLIPPO_PACKAGER === "pacman";
 export type Mode = "Smart" | "Balanced" | "Maximum" | "Custom";
 export type Settings = {
   resizePercent?: number;
@@ -42,7 +43,7 @@ export const defaults: Settings = {
   replace: false,
   compact: false,
   teardrop: false,
-  theme: "Dark",
+  theme: linuxDesktop ? "System" : "Dark",
   motion: "Full",
   language: navigator.language.toLowerCase().split("-")[0] === "de" ? "de" : "en",
 };

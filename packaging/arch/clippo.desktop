@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=ClippO
+Comment=Compress images, PDFs and audio locally
+Exec=clippo
+Icon=clippo
+Terminal=false
+Categories=Graphics;Utility;

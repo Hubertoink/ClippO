@@ -99,12 +99,13 @@ button:disabled {
 }
 .titlebar {
   height: 74px;
-  justify-content: space-between;
+  justify-content: flex-end;
   padding: 0 25px;
   border-bottom: 1px solid var(--edge);
   user-select: none;
 }
 .brand {
+  margin-left: auto;
   gap: 11px;
 }
 .brand-mark {
@@ -1323,3 +1324,52 @@ footer {
 @media (prefers-reduced-motion: reduce) {
   .dock-expanded .widget { animation: none; }
 }
+
+:root[data-omarchy] {
+  color-scheme: var(--om-mode, light dark);
+  font-family: ui-monospace, monospace;
+  --panel: var(--om-background);
+  --text: var(--om-foreground);
+  --accent: var(--om-accent);
+  --tint: var(--accent);
+  --muted: color-mix(in srgb, var(--text) 75%, var(--panel));
+  --edge: color-mix(in srgb, var(--text) 30%, var(--panel));
+  --menu: var(--om-lighter_background, var(--panel));
+  --field: var(--om-lighter_background, color-mix(in srgb, var(--text) 8%, var(--panel)));
+  --inset: var(--panel);
+  --dotted: var(--edge);
+  --selected: var(--om-selection, var(--field));
+}
+:root[data-omarchy] .desktop:not(.dock-resting) .widget {
+  background: var(--panel);
+  border-color: var(--edge);
+  border-radius: 4px;
+}
+:root[data-omarchy] .dropzone {
+  background: var(--panel);
+  border-radius: 3px;
+}
+:root[data-omarchy] .dropzone::before { display: none; }
+:root[data-omarchy] :is(.button-main, .brand-mark) {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: none;
+  color: var(--panel);
+}
+:root[data-omarchy] .teardrop-handle::before { background: var(--accent); }
+:root[data-omarchy] .teardrop-handle { color: var(--panel); }
+:root[data-omarchy] :is(.button, .mode-select, .tabs, .tabs button, .brand-mark, .drop-targets > div) {
+  border-radius: 3px;
+}
+:root[data-omarchy] :is(.dropzone.dragging, .drop-targets > .active, .tabs [aria-pressed="true"],
+  .format-picks [aria-pressed="true"], .mode-menu [aria-checked="true"],
+  .button-secondary:hover, .button-icon:hover, .mode-select:hover, .tabs button:hover) {
+  background: var(--selected);
+}
+:root[data-omarchy] .switch { background: var(--edge); }
+:root[data-omarchy] .switch-thumb { background: var(--panel); }
+:root[data-omarchy] .switch[data-state="checked"] { background: var(--accent); }
+:root[data-omarchy] :is(.target-symbol, .state-icon) { color: var(--accent); background: var(--field); }
+:root[data-omarchy] :is(.done-icon, .result h1, .notice > svg) { color: var(--om-green, var(--text)); }
+:root[data-omarchy] .done-icon { background: var(--field); }
+:root[data-omarchy] .notice.error > svg { color: var(--om-red, var(--text)); }

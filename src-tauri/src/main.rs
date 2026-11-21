@@ -4,6 +4,8 @@ mod desktop;
 mod engine;
 mod fullscreen;
 mod jobs;
+#[cfg(target_os = "linux")]
+mod omarchy;
 #[cfg(windows)]
 mod windows_drop;
 
@@ -104,6 +106,8 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             portable_build,
+            #[cfg(target_os = "linux")]
+            omarchy::omarchy_palette,
             open_portable_release,
             jobs::file_size,
             jobs::image_dimensions,

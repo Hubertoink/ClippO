@@ -41,12 +41,14 @@ import { Button } from "./components/ui";
 import { ResizeDimensions } from "./components/ResizeDimensions";
 import { UpdateNotice, useUpdateCheck } from "./components/UpdateNotice";
 import { Preferences } from "./components/Preferences";
+import { followOmarchyTheme } from "./lib/omarchy";
 import {
   estimated,
   extensions,
   imageExtensions,
   native,
   linuxDesktop,
+  pacmanBuild,
   pretty,
   readSettings,
   type Input,
@@ -138,7 +140,7 @@ export default function App() {
     action: "resize" | "convert";
     files: Input[];
   } | null>(null);
-  const updates = useUpdateCheck(native);
+  const updates = useUpdateCheck(native && !pacmanBuild);
   const updateVisible = !!updates.update;
   const [dockOpen, setDockOpen] = useState(false);
   const docked = native && s.teardrop;
@@ -195,6 +197,9 @@ export default function App() {
     document.documentElement.dataset.native = String(native);
     if (native) invoke("set_detection", { enabled: s.watch }).catch(caught);
   }, [s]);
+  useEffect(() => {
+    if (linuxDesktop && s.theme === "System") return followOmarchyTheme();
+  }, [s.theme]);
   const height = (preferences ? 420 : shortcuts ? 300 : s.compact ? 236 : result && !busy ? 300 : 260) +
     (updateVisible ? 46 : 0);
   useEffect(() => {
@@ -710,12 +715,6 @@ export default function App() {
             title={t("Drop a file or click to open ClippO", "Datei ablegen oder ClippO per Klick öffnen")}
             onClick={() => setDockOpen(true)}><ChevronsDownUp aria-hidden="true" /></button>}
           <header className="titlebar" data-tauri-drag-region={docked ? undefined : true}>
-            <div className="brand" data-tauri-drag-region={docked ? undefined : true}>
-              <span className="brand-mark">
-                <ChevronsDownUp strokeWidth={2.8} />
-              </span>
-              <strong>ClippO</strong>
-            </div>
             <div className="header-actions">
               <Button
                 variant="icon"

@@ -6,13 +6,16 @@ ClippO is a floating desktop widget for compressing screenshots, images and PDFs
 
 ## Install
 
+**Omarchy Quattro / Arch Linux (x86-64)** · Install `base-devel`, then run `cd packaging/arch && makepkg -si` as your regular user from the repository checkout. Open **ClippO** from the app launcher. **Preferences → Appearance → Theme → System** follows Quattro's active palette, including live changes. New Linux installations default to System. Existing installations keep their saved preference.
+
 Choose a package from [GitHub Releases](https://github.com/Hubertoink/ClippO/releases/latest).
 
 | Platform | Download | How to start |
 | --- | --- | --- |
 | Windows x64 | `*-setup.exe` | Run the installer for your Windows account. |
 | Windows x64, portable | `*-portable.zip` | Extract the whole archive and run `clippo.exe` next to `resources`. |
-| Ubuntu 24.04 LTS, x86-64 | `*_amd64.deb` | In the download folder, run `sudo apt install ./ClippO_0.8.1_amd64.deb`. Open **ClippO** from the application menu. |
+| Omarchy Quattro / Arch Linux, x86-64 | `*.pkg.tar.zst` | Run `sudo pacman -U ./clippo-0.9.0-1-x86_64.pkg.tar.zst` and open **ClippO** in the app launcher. |
+| Ubuntu 24.04 LTS, x86-64 | `*_amd64.deb` | In the download folder, run `sudo apt install ./ClippO_0.9.0_amd64.deb`. Open **ClippO** from the application menu. |
 
 Both Windows editions require the Microsoft Edge WebView2 Runtime. On Ubuntu, APT installs the runtime dependencies, including WebKitGTK, ImageMagick, qpdf and Ghostscript.
 
@@ -62,7 +65,7 @@ npm exec -- tauri signer sign -f $keyPath --app-version $version $deb
 .\scripts\package-release.ps1 -Signed -LinuxPackage $deb
 ```
 
-Publish the installer, portable ZIP, Debian package, both detached signatures and the combined `latest.json` in one release tagged `v<version>`. Mark the release as latest once all six assets are present. [Tauri updater](https://v2.tauri.app/plugin/updater/)
+Publish the installer, portable ZIP, Debian package, Arch package, both updater signatures and the combined `latest.json` in one release tagged `v<version>`. Mark the release as latest once all seven assets are present. [Tauri updater](https://v2.tauri.app/plugin/updater/)
 
 ## Implementation
 

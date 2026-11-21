@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { ArrowLeft, Check, FolderOpen, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronsDownUp, FolderOpen, X } from "lucide-react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import type { useUpdateCheck } from "./UpdateNotice";
-import { linuxDesktop, native, type Settings } from "../lib/types";
+import { linuxDesktop, native, pacmanBuild, type Settings } from "../lib/types";
 import { Button, Toggle } from "./ui";
 type Props = {
   s: Settings;
@@ -114,6 +114,12 @@ export function Preferences({ s, set, close, initial, updateStatus, checkUpdates
           <ArrowLeft />
         </Button>
         <h1>{t("Preferences", "Einstellungen")}</h1>
+        <div className="brand">
+          <span className="brand-mark" aria-hidden="true">
+            <ChevronsDownUp strokeWidth={2.8} />
+          </span>
+          <strong>ClippO</strong>
+        </div>
       </div>
       <div className="tabs">
         {["General", "Compression", "Appearance"].map((v, i) => (
@@ -136,6 +142,7 @@ export function Preferences({ s, set, close, initial, updateStatus, checkUpdates
                   disabled={autostart === null || saving} onChange={changeAutostart} />)}
                 {autostartError && <p role="alert">{t("Couldn’t access the autostart setting.", "Zugriff auf die Autostart-Einstellung fehlgeschlagen.")}</p>}
                 {row(t("App updates", "App-Updates"),
+                  pacmanBuild ? <span>{t("Arch package", "Arch-Paket")}</span> :
                   <div className="pref-update">
                     <span role="status">
                       {updateStatus === "current" && (
