@@ -16,6 +16,8 @@ prepare() {
   cp -r "$repo"/{src,public,index.html,package*.json,tsconfig.json,vite.config.ts,LICENSE} "$srcdir/clippo/"
   cp -r "$repo"/src-tauri/{src,icons,capabilities,Cargo.*,build.rs,tauri*.json} "$srcdir/clippo/src-tauri/"
   cp -r "$repo/src-tauri/resources/licenses" "$srcdir/clippo/src-tauri/resources/"
+  mkdir -p "$srcdir/clippo/packaging"
+  cp -r "$repo/packaging/arch/omarchy" "$srcdir/clippo/packaging/"
 }
 
 build() {
@@ -29,6 +31,11 @@ package() {
   install -Dm755 src-tauri/target/release/clippo "$pkgdir/usr/bin/clippo"
   install -Dm644 src-tauri/icons/icon.png "$pkgdir/usr/share/pixmaps/clippo.png"
   install -Dm644 "$startdir/clippo.desktop" "$pkgdir/usr/share/applications/clippo.desktop"
+  install -Dm755 packaging/omarchy/install.sh "$pkgdir/usr/bin/clippo-omarchy-install"
+  install -Dm644 packaging/omarchy/manifest.json "$pkgdir/usr/share/clippo/omarchy/manifest.json"
+  install -Dm644 packaging/omarchy/Main.qml "$pkgdir/usr/share/clippo/omarchy/Main.qml"
+  install -Dm644 packaging/omarchy/i18n/en.json "$pkgdir/usr/share/clippo/omarchy/i18n/en.json"
+  install -Dm644 packaging/omarchy/i18n/de.json "$pkgdir/usr/share/clippo/omarchy/i18n/de.json"
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/clippo/LICENSE"
   install -m644 src-tauri/resources/licenses/* "$pkgdir/usr/share/licenses/clippo/"
 }

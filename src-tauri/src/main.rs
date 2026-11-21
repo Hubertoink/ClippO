@@ -1,5 +1,6 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 mod audio;
+mod cli;
 mod desktop;
 mod engine;
 mod fullscreen;
@@ -37,6 +38,25 @@ fn open_portable_release(app: tauri::AppHandle) -> Result<(), String> {
 }
 
 fn main() {
+    let arguments: Vec<String> = std::env::args().skip(1).collect();
+    if arguments
+        .first()
+        .is_some_and(|argument| argument == "compress")
+    {
+        std::process::exit(cli::compress(&arguments[1..]));
+    }
+    #[cfg(target_os = "linux")]
+    if arguments
+        .first()
+        .is_some_and(|argument| argument == "panel")
+    {
+        let result = std::process::Command::new("omarchy-shell")
+            .args(["hubertoink.clippo", "toggle"])
+            .status();
+        if result.is_ok_and(|status| status.success()) {
+            return;
+        }
+    }
     tauri::Builder::default()
         .manage(jobs::Session::default())
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {

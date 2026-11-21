@@ -6,7 +6,7 @@ ClippO is a floating desktop widget for compressing screenshots, images and PDFs
 
 ## Install
 
-**Omarchy Quattro / Arch Linux (x86-64)** · Install `base-devel`, then run `cd packaging/arch && makepkg -si` as your regular user from the repository checkout. Open **ClippO** from the app launcher. **Preferences → Appearance → Theme → System** follows Quattro's active palette, including live changes. New Linux installations default to System. Existing installations keep their saved preference.
+**Omarchy / Arch Linux (x86-64)** · Install `base-devel`, then run `cd packaging/arch && makepkg -si` as your regular user from the repository checkout. Run `clippo-omarchy-install` once to enable the native Omarchy bar widget. It opens as an anchored Quickshell panel, follows the active Omarchy theme live, and persists across workspaces. The app launcher and `clippo panel` toggle the same panel.
 
 Choose a package from [GitHub Releases](https://github.com/Hubertoink/ClippO/releases/latest).
 
@@ -24,7 +24,7 @@ ClippO starts in German on German-language systems and in English elsewhere. Cho
 ## Use the widget
 
 - Press **Ctrl + Shift + O** to show or hide ClippO. **Ctrl + O** opens a file picker. The tray menu can reopen or quit the app.
-- Enable **Preferences → Appearance → Top-edge teardrop** to dock ClippO at the top center of the current screen. Drag a file onto the teardrop to unfold its actions, or click it to open the widget. The minus button and **Ctrl + Shift + O** collapse it again. On Windows and X11, the resting teardrop disappears during fullscreen on its monitor and returns when you leave fullscreen.
+- On Omarchy, click the ClippO bar icon to open its native panel. You can drop files directly on the bar icon or inside the open panel. The gear opens panel settings for the 1 MB target, metadata and save location; these preferences persist with the shell. The result is saved as a conflict-free `<name>-clippo.<ext>` beside the source. On other desktops, enable **Preferences → Appearance → Top-edge teardrop** to dock ClippO at the top center of the current screen.
 - Drop a PNG, JPEG, WebP, AVIF, HEIC or PDF to compress it. When dropping images, you can also resize or convert them. The resize preview shows the original and target width and height for each image.
 - Drop or browse for a mono or stereo WAV file to convert it locally to MP3. Choose **Save copy** to save `<name>-clippo.mp3` beside the WAV. Balanced uses a target bitrate of 192 kbit/s, Smart 256 and Maximum 96. Set a custom bitrate under **Preferences → Compression**. A file-size limit can lower the bitrate. The decoder accepts PCM WAV and 32-bit IEEE float WAV at 8–384 kHz. WAV-specific metadata is not transferred.
 - Choose **Balanced**, **Smart**, **Maximum** or **Custom**. Enable **Under 1 MB** to target 999,999 bytes. ClippO reports the actual output size when it finishes.

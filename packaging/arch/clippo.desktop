@@ -2,7 +2,7 @@
 Type=Application
 Name=ClippO
 Comment=Compress images, PDFs and audio locally
-Exec=clippo
+Exec=clippo panel
 Icon=clippo
 Terminal=false
 Categories=Graphics;Utility;
