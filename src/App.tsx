@@ -150,8 +150,12 @@ export default function App() {
   const updates = useUpdateCheck(native && !pacmanBuild);
   const updateVisible = !!updates.update;
   const [dockOpen, setDockOpen] = useState(false);
+  const [quietJob, setQuietJob] = useState(false);
+  const [captureResult, setCaptureResult] = useState<ResultFile | null>(null);
   const docked = native && s.teardrop;
-  const collapsed = docked && !(dockOpen || drag || busy || preferences || edit || shortcuts || detected);
+  const collapsed = docked && !(dockOpen || drag || (busy && !quietJob) || preferences || edit || shortcuts);
+  const wideHandle = collapsed && !!(captureResult || detected);
+  const [closingHandle, setClosingHandle] = useState(false);
   const handleSized = useSyncExternalStore(subscribeHandleViewport, isHandleViewport);
   const showHandle = docked && (collapsed || handleSized);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -163,6 +167,7 @@ export default function App() {
     setPref("");
     setShortcuts(false);
     setDetected(null);
+    setCaptureResult(null);
     setModeMenu(false);
     setActions(false);
     setEdit(null);
@@ -212,11 +217,29 @@ export default function App() {
   const height = (preferences ? 420 : shortcuts ? 300 : s.compact ? 236 : result && !busy ? 300 : 260) +
     (updateVisible ? 46 : 0);
   useEffect(() => {
+    if (!captureResult) return;
+    if (!collapsed) {
+      setCaptureResult(null);
+      return;
+    }
+    const timer = setTimeout(() => setCaptureResult(null), 2200);
+    return () => clearTimeout(timer);
+  }, [captureResult, collapsed]);
+  useEffect(() => {
+    if (wideHandle) {
+      setClosingHandle(true);
+      return;
+    }
+    const timer = setTimeout(() => setClosingHandle(false), off ? 0 : 200);
+    return () => clearTimeout(timer);
+  }, [wideHandle, off]);
+  const wideWindow = wideHandle || closingHandle;
+  useEffect(() => {
     if (updateVisible && latest.current.teardrop) setDockOpen(true);
   }, [updateVisible]);
   useEffect(() => {
-    if (native) void invoke("layout_widget", { docked, collapsed, height }).catch(caught);
-  }, [docked, collapsed, height]);
+    if (native) void invoke("layout_widget", { docked, collapsed, wideHandle: wideWindow, height }).catch(caught);
+  }, [docked, collapsed, wideWindow, height]);
   useEffect(() => {
     if (!modeMenu) return;
     const outside = (e: PointerEvent) => {
@@ -225,14 +248,16 @@ export default function App() {
     document.addEventListener("pointerdown", outside);
     return () => document.removeEventListener("pointerdown", outside);
   }, [modeMenu]);
-  async function run(files: Input[], options?: Partial<Settings>) {
+  async function run(files: Input[], options?: Partial<Settings>, inHandle = false) {
     if (installing.current) return;
-    if (latest.current.teardrop) setDockOpen(true);
+    if (latest.current.teardrop && !inHandle) setDockOpen(true);
+    setCaptureResult(null);
     setEdit(null);
     queue.current.push(...files.map((file) => ({ file, options })));
     setWaiting(queue.current.length);
     if (locked.current) return;
     locked.current = true;
+    setQuietJob(inHandle);
     setBusy(true);
     setBatch([]);
     interact();
@@ -298,14 +323,17 @@ export default function App() {
           previous.current = source;
           setBatch((old) => [...old, { file: source, r }]);
           setResult(r);
+          if (inHandle) setCaptureResult(r);
           if (r.saved) message(r.saved, false, r.savedPath);
         } catch (e) {
+          if (inHandle) setDockOpen(true);
           caught(e);
         }
       }
     } finally {
       locked.current = false;
       setBusy(false);
+      setQuietJob(false);
       setInfo(null);
     }
   }
@@ -398,6 +426,7 @@ export default function App() {
   const eventRef = useRef({
     paths,
     run,
+    collapsed,
     paste,
     s,
     preferences,
@@ -409,6 +438,7 @@ export default function App() {
   eventRef.current = {
     paths,
     run,
+    collapsed,
     paste,
     s,
     preferences,
@@ -536,7 +566,7 @@ export default function App() {
                 }
               : "clipboard";
             if (source === "clipboard" && cfg.auto) {
-              void eventRef.current.run([source]);
+              void eventRef.current.run([source], undefined, eventRef.current.collapsed);
               return;
             }
             setDetected(source);
@@ -719,10 +749,21 @@ export default function App() {
           onPointerDown={interact}
           onPointerEnter={interact}
         >
-          {showHandle && <button className="teardrop-handle"
-            aria-label={t("Open ClippO", "ClippO öffnen")}
+          {showHandle && <button className={"teardrop-handle" + (wideHandle ? " wide" : "")}
+            aria-label={detected && !captureResult ? t("Compress screenshot", "Screenshot komprimieren") : t("Open ClippO", "ClippO öffnen")}
             title={t("Drop a file or click to open ClippO", "Datei ablegen oder ClippO per Klick öffnen")}
-            onClick={() => setDockOpen(true)}><ChevronsDownUp aria-hidden="true" /></button>}
+            onClick={() => {
+              if (detected && !captureResult) void run([detected], undefined, true);
+              else setDockOpen(true);
+            }}>
+            <ChevronsDownUp className="handle-chevron" aria-hidden="true" />
+            <span className="handle-message" role="status">
+              {captureResult ? <>
+                <strong>{Math.max(0, Math.round((1 - captureResult.size / Math.max(1, captureResult.original)) * 100))} %</strong>
+                {t("saved", "gespart")} <Check aria-hidden="true" />
+              </> : detected ? t("Compress?", "Komprimieren?") : null}
+            </span>
+          </button>}
           <header className="titlebar" data-tauri-drag-region={docked ? undefined : true}>
             <div className="header-actions">
               <Button

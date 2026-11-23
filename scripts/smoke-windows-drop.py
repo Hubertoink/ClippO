@@ -109,6 +109,42 @@ def exercise(page, folder, playwright, pid):
     assert handle.evaluate("el => getComputedStyle(el, '::before').height") == "20px"
     expect(page.locator(".widget")).to_have_css("width", "64px")
     exercise_fullscreen(playwright, pid)
+    # Send the folder watcher's event with a real PNG and exercise the native encoder.
+    page.evaluate("""() => {
+        const settings = JSON.parse(localStorage.getItem('clippo.preferences'));
+        localStorage.setItem('clippo.preferences', JSON.stringify({...settings, watch:true}));
+    }""")
+    page.reload()
+    expect(handle).to_be_visible()
+    capture = folder / "Capture.png"
+    shutil.copyfile(Path(__file__).resolve().parents[1] / "src-tauri/icons/icon.png", capture)
+    page.evaluate("""path => window.__TAURI_INTERNALS__.invoke('plugin:event|emit', {
+        event:'capture', payload:{path, wasHidden:false}
+    })""", str(capture))
+    prompt = page.get_by_role("button", name="Compress screenshot", exact=True)
+    expect(prompt).to_be_visible()
+    expect(page.locator(".widget")).to_have_css("width", "100px")
+    prompt.click()
+    expect(page.locator(".handle-message")).to_contain_text("%")
+    expect(page.locator(".handle-message")).to_contain_text("saved")
+    expect(page.locator(".widget")).to_have_css("height", "24px")
+    expect(page.locator(".widget")).to_have_css("width", "64px", timeout=5000)
+    # The hosted runner has its own clipboard. Keep local runs off the user's clipboard.
+    if os.environ.get("RUNNER_ENVIRONMENT") == "github-hosted":
+        page.evaluate("""() => {
+            const settings = JSON.parse(localStorage.getItem('clippo.preferences'));
+            localStorage.setItem('clippo.preferences', JSON.stringify({...settings, auto:true}));
+        }""")
+        page.reload()
+        expect(handle).to_be_visible()
+        subprocess.run(["powershell", "-NoProfile", "-STA", "-Command",
+                        "Add-Type -AssemblyName System.Windows.Forms,System.Drawing\n"
+                        "$image = [Drawing.Bitmap]::new($env:CLIPPO_TEST_PNG)\n"
+                        "[Windows.Forms.Clipboard]::SetImage($image)\n$image.Dispose()"],
+                       env={**os.environ, "CLIPPO_TEST_PNG": str(capture)}, check=True)
+        expect(page.locator(".handle-message")).to_contain_text("%", timeout=10000)
+        expect(page.locator(".widget")).to_have_css("width", "100px")
+        expect(page.locator(".widget")).to_have_css("width", "64px", timeout=5000)
     client = page.context.new_cdp_session(page)
 
     def drag(event, file, x, y):

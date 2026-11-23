@@ -1317,7 +1317,7 @@ footer {
 .teardrop-handle {
   position: relative;
   flex: none;
-  width: 64px;
+  width: 100%;
   height: 24px;
   display: grid;
   place-items: center;
@@ -1327,12 +1327,39 @@ footer {
 .teardrop-handle::before {
   content: "";
   position: absolute;
-  inset: 0 4px auto;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
   height: 20px;
   background: linear-gradient(155deg, #d4c8ea, #b09ccf);
-  clip-path: path("M0 0H56C46 0 46 5 42 10C38 16 34 20 28 20C22 20 18 16 14 10C10 5 10 0 0 0Z");
+  clip-path: path("M22 0H78C68 0 68 5 64 10C60 16 56 20 50 20C44 20 40 16 36 10C32 5 32 0 22 0Z");
+  transition: clip-path 200ms ease-in-out;
+}
+.teardrop-handle.wide::before {
+  background: #c5b4da;
+  clip-path: path("M0 0H100C100 6 100 20 87 20C75 20 60 20 50 20C40 20 25 20 13 20C0 20 0 6 0 0Z");
 }
 .teardrop-handle svg { position: relative; width: 12px; height: 12px; stroke-width: 2.4; }
+.teardrop-handle .handle-chevron { transition: opacity 80ms; }
+.teardrop-handle.wide .handle-chevron { opacity: 0; }
+.handle-message {
+  position: absolute;
+  inset: 0 0 auto;
+  display: flex;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font: 400 11px/12px system-ui, sans-serif;
+  color: #242431;
+  white-space: nowrap;
+  opacity: 0;
+}
+.teardrop-handle.wide .handle-message { opacity: 1; transition: opacity 90ms 100ms; }
+.handle-message svg { width: 10px; height: 10px; }
+.no-motion .teardrop-handle::before,
+.no-motion .teardrop-handle :is(.handle-chevron, .handle-message) { transition: none; }
 .teardrop-handle:is(:hover, :focus-visible) { filter: brightness(1.12); }
 :root[data-native="true"] .dock-expanded .widget {
   border-radius: 0 0 16px 16px;
@@ -1383,6 +1410,7 @@ footer {
 }
 :root[data-omarchy] .teardrop-handle::before { background: var(--accent); }
 :root[data-omarchy] .teardrop-handle { color: var(--panel); }
+:root[data-omarchy] .handle-message { color: var(--panel); }
 :root[data-omarchy] :is(.button, .mode-select, .tabs, .tabs button, .brand-mark, .drop-targets > div) {
   border-radius: 3px;
 }
