@@ -1,6 +1,6 @@
 [package]
 name = "clippo"
-version = "0.10.1"
+version = "0.10.2"
 edition = "2021"
 authors = ["Hubertoink <Hubertoink@users.noreply.github.com>"]
 description = "Floating image and PDF compressor for Windows and Linux"
@@ -32,14 +32,15 @@ tempfile = "3"
 directories = "6"
 lopdf = { version = "0.38", default-features = false }
 tauri-plugin-autostart = "2"
-drag = "2.1.1"
 base64 = "0.23"
 [target.'cfg(windows)'.dependencies]
 webview2-com = "0.39"
 windows-core = "0.62"
+windows = { version = "0.62", features = ["Win32_Graphics_Gdi", "Win32_UI_WindowsAndMessaging", "Win32_System_Com", "Win32_System_Ole", "Win32_System_SystemServices", "Win32_UI_Shell"] }
 windows-sys = { version = "0.61", features = ["Win32_System_DataExchange", "Win32_Foundation", "Win32_Graphics_Gdi", "Win32_UI_WindowsAndMessaging", "Win32_System_Com", "Win32_UI_Shell", "Win32_Storage_FileSystem"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
+drag = "2.1.1"
 toml = "1"
 gtk = "0.18"
 x11rb = "0.13"

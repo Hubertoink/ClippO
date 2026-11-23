@@ -286,7 +286,15 @@ export default function App() {
     if (updateVisible && latest.current.teardrop) openDock();
   }, [updateVisible]);
   useEffect(() => {
-    if (native) void invoke("layout_widget", { docked, collapsed, wideHandle: wideWindow, height, fanCount }).catch(caught);
+    if (!native) return;
+    const layout = () => void invoke("layout_widget", { docked, collapsed, wideHandle: wideWindow, height, fanCount }).catch(caught);
+    if (docked && !collapsed && isHandleViewport() && !document.hidden) {
+      // Present the transparent frame before moving the small WebView to the
+      // panel's left edge. Its compositor can reuse the last frame on resize.
+      let frame = requestAnimationFrame(() => { frame = requestAnimationFrame(layout); });
+      return () => cancelAnimationFrame(frame);
+    }
+    layout();
   }, [docked, collapsed, wideWindow, height, fanCount]);
   useEffect(() => {
     if (!modeMenu) return;
@@ -809,7 +817,7 @@ export default function App() {
           onPointerDown={interact}
           onPointerEnter={interact}
         >
-          {showHandle && <button className={"teardrop-handle" + (wideHandle ? " wide" : "")}
+          {collapsed && <button className={"teardrop-handle" + (wideHandle ? " wide" : "")}
             aria-label={detected && !captureResult ? t("Compress screenshot", "Screenshot komprimieren") : t("Open ClippO", "ClippO öffnen")}
             title={t("Drop a file or click to open ClippO", "Datei ablegen oder ClippO per Klick öffnen")}
             onClick={() => {

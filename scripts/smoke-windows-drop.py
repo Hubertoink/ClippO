@@ -108,6 +108,28 @@ def exercise(page, folder, playwright, pid):
     expect(handle).to_have_css("height", "24px")
     assert handle.evaluate("el => getComputedStyle(el, '::before').height") == "20px"
     expect(page.locator(".widget")).to_have_css("width", "64px")
+    # The narrow WebView must present a clear frame before its left edge moves.
+    handle.evaluate("""el => el.addEventListener('click', () => {
+        window.clearedBeforeResize = false;
+        function sample() {
+            if (innerHeight > 40) return;
+            if (!document.querySelector('.teardrop-handle')?.getClientRects().length &&
+                !document.querySelector('.titlebar')?.getClientRects().length) {
+                window.clearedBeforeResize = true;
+                return;
+            }
+            requestAnimationFrame(sample);
+        }
+        requestAnimationFrame(sample);
+    }, {once: true})""")
+    handle.click()
+    panel = page.locator(".dock-expanded .widget")
+    expect(panel).to_be_visible()
+    expect(panel).to_have_css("width", "420px")
+    assert page.evaluate("window.clearedBeforeResize")
+    page.get_by_role("button", name="Collapse to teardrop").click()
+    expect(handle).to_be_visible()
+    expect(page.locator(".widget")).to_have_css("width", "64px")
     exercise_fullscreen(playwright, pid)
     # Send the folder watcher's event with a real PNG and exercise the native encoder.
     page.evaluate("""() => {

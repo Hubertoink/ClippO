@@ -174,20 +174,7 @@ pub fn drag_screenshot(window: WebviewWindow, id: u64, image: CardDragImage) -> 
         let pixels = image::load_from_memory_with_format(&bytes, ImageFormat::Png)
             .explain()?
             .into_rgba8();
-        let mut transparent = Cursor::new(Vec::new());
-        RgbaImage::new(1, 1)
-            .write_to(&mut transparent, ImageFormat::Png)
-            .explain()?;
-        let card = windows_drag::LiftedCard::show(pixels, x, y).explain()?;
-        let result = drag::start_drag(
-            &window,
-            drag::DragItem::Files(vec![entry.file.clone()]),
-            drag::Image::Raw(transparent.into_inner()),
-            |_, _| {},
-            drag::Options::default(),
-        );
-        drop(card);
-        result.explain()?;
+        windows_drag::drag_file(&entry.file, pixels, x, y).explain()?;
         window.emit("screenshot-drag-ended", ()).explain()
     }
     #[cfg(target_os = "linux")]

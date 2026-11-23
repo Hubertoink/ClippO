@@ -203,7 +203,7 @@ pub fn layout_widget(
     #[cfg(windows)]
     unsafe {
         use windows_sys::Win32::UI::WindowsAndMessaging::{
-            SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER,
+            SetWindowPos, SWP_NOACTIVATE, SWP_NOCOPYBITS, SWP_NOZORDER,
         };
         if SetWindowPos(
             window.hwnd().explain()?.0.cast(),
@@ -212,7 +212,7 @@ pub fn layout_widget(
             y,
             size.width as i32,
             size.height as i32,
-            SWP_NOACTIVATE | SWP_NOZORDER,
+            SWP_NOACTIVATE | SWP_NOCOPYBITS | SWP_NOZORDER,
         ) == 0
         {
             return Err(std::io::Error::last_os_error().to_string());
