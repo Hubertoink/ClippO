@@ -41,6 +41,7 @@ import { Button } from "./components/ui";
 import { ResizeDimensions } from "./components/ResizeDimensions";
 import { UpdateNotice, useUpdateCheck } from "./components/UpdateNotice";
 import { Preferences } from "./components/Preferences";
+import { ScreenshotFan, type Screenshot } from "./components/ScreenshotFan";
 import { followOmarchyTheme } from "./lib/omarchy";
 import {
   estimated,
@@ -150,9 +151,15 @@ export default function App() {
   const updates = useUpdateCheck(native && !pacmanBuild);
   const updateVisible = !!updates.update;
   const [dockOpen, setDockOpen] = useState(false);
+  const [foldingFan, setFoldingFan] = useState(false);
+  const openDock = () => { setFoldingFan(false); setDockOpen(true); };
   const [quietJob, setQuietJob] = useState(false);
   const [captureResult, setCaptureResult] = useState<ResultFile | null>(null);
   const docked = native && s.teardrop;
+  const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
+  const outgoingDrag = useRef(false);
+  const fanEnabled = docked && s.screenshotFan;
+  const fanCount = fanEnabled && dockOpen && !preferences && !shortcuts && !edit ? screenshots.length : 0;
   const collapsed = docked && !(dockOpen || drag || (busy && !quietJob) || preferences || edit || shortcuts);
   const wideHandle = collapsed && !!(captureResult || detected);
   const [closingHandle, setClosingHandle] = useState(false);
@@ -162,7 +169,8 @@ export default function App() {
   const clearLeave = () => clearTimeout(leaveTimer.current);
   const collapse = () => {
     clearLeave();
-    setDockOpen(false);
+    if (fanCount > 0 && !off) setFoldingFan(true);
+    else setDockOpen(false);
     setDrag(false);
     setPref("");
     setShortcuts(false);
@@ -185,6 +193,14 @@ export default function App() {
     modeBox = useRef<HTMLDivElement>(null);
   const osReduced = useReducedMotion(),
     off = !!osReduced || s.motion === "Off";
+  useEffect(() => {
+    if (!foldingFan) return;
+    const timer = setTimeout(() => {
+      setDockOpen(false);
+      setFoldingFan(false);
+    }, off ? 0 : s.motion === "Subtle" ? 120 : 210);
+    return () => clearTimeout(timer);
+  }, [foldingFan, off, s.motion]);
   const t = (en: string, de: string) => (s.language === "de" ? de : en);
   const set = (v: Partial<Settings>) => {
     if (v.teardrop !== undefined) setDockOpen(false);
@@ -200,6 +216,32 @@ export default function App() {
   };
   const caught = (e: unknown) =>
     message(e instanceof Error ? e.message : String(e), true);
+  const dragScreenshot = (id: number) => {
+    if (outgoingDrag.current) return;
+    outgoingDrag.current = true;
+    void invoke("drag_screenshot", { id }).catch(error => {
+      outgoingDrag.current = false;
+      caught(error);
+    });
+  };
+  useEffect(() => {
+    if (!native) return;
+    let active = true;
+    let received = false;
+    const subscription = listen<Screenshot[]>("screenshot-fan-changed", ({ payload }) => {
+      if (active && fanEnabled) {
+        received = true;
+        setScreenshots(payload);
+      }
+    });
+    setScreenshots([]);
+    void subscription.then(async () => {
+      if (!active) return;
+      const items = await invoke<Screenshot[]>("configure_screenshot_fan", { enabled: fanEnabled });
+      if (active && !received) setScreenshots(items);
+    }).catch(caught);
+    return () => { active = false; void subscription.then(stop => stop()); };
+  }, [fanEnabled]);
   const interact = () => {
     if (hideTimer.current) clearTimeout(hideTimer.current);
   };
@@ -235,11 +277,11 @@ export default function App() {
   }, [wideHandle, off]);
   const wideWindow = wideHandle || closingHandle;
   useEffect(() => {
-    if (updateVisible && latest.current.teardrop) setDockOpen(true);
+    if (updateVisible && latest.current.teardrop) openDock();
   }, [updateVisible]);
   useEffect(() => {
-    if (native) void invoke("layout_widget", { docked, collapsed, wideHandle: wideWindow, height }).catch(caught);
-  }, [docked, collapsed, wideWindow, height]);
+    if (native) void invoke("layout_widget", { docked, collapsed, wideHandle: wideWindow, height, fanCount }).catch(caught);
+  }, [docked, collapsed, wideWindow, height, fanCount]);
   useEffect(() => {
     if (!modeMenu) return;
     const outside = (e: PointerEvent) => {
@@ -250,7 +292,7 @@ export default function App() {
   }, [modeMenu]);
   async function run(files: Input[], options?: Partial<Settings>, inHandle = false) {
     if (installing.current) return;
-    if (latest.current.teardrop && !inHandle) setDockOpen(true);
+    if (latest.current.teardrop && !inHandle) openDock();
     setCaptureResult(null);
     setEdit(null);
     queue.current.push(...files.map((file) => ({ file, options })));
@@ -326,7 +368,7 @@ export default function App() {
           if (inHandle) setCaptureResult(r);
           if (r.saved) message(r.saved, false, r.savedPath);
         } catch (e) {
-          if (inHandle) setDockOpen(true);
+          if (inHandle) openDock();
           caught(e);
         }
       }
@@ -361,7 +403,7 @@ export default function App() {
   }
   const paths = async (items: string[], action: DropAction = "compress") => {
     clearLeave();
-    if (latest.current.teardrop) setDockOpen(true);
+    if (latest.current.teardrop) openDock();
     const files = await Promise.all(
       items.map(async (path) => ({
         path,
@@ -425,6 +467,7 @@ export default function App() {
   };
   const eventRef = useRef({
     paths,
+    collapse,
     run,
     collapsed,
     paste,
@@ -437,6 +480,7 @@ export default function App() {
   });
   eventRef.current = {
     paths,
+    collapse,
     run,
     collapsed,
     paste,
@@ -457,7 +501,7 @@ export default function App() {
         else if (st.actions) setActions(false);
         else if (st.preferences) setPref("");
         else if (st.shortcuts) setShortcuts(false);
-        else if (native && st.s.teardrop) collapse();
+        else if (native && st.s.teardrop) st.collapse();
         else if (native) void invoke("hide_widget").catch(caught);
         else setDetected(null);
       }
@@ -489,9 +533,11 @@ export default function App() {
     window.addEventListener("keydown", key);
     window.addEventListener("paste", onPaste);
     if (native) {
+      clean.push(listen("screenshot-drag-ended", () => { outgoingDrag.current = false; }));
       if (windowsDrop) {
         clean.push(
           listen<{ paths: string[]; action: DropAction }>("windows-file-drop", ({ payload }) => {
+            if (outgoingDrag.current) return;
             void eventRef.current.paths(payload.paths, payload.action).catch(caught);
           }),
           listen("windows-file-drop-error", () => {
@@ -502,6 +548,7 @@ export default function App() {
       }
       clean.push(
         getCurrentWebviewWindow().onDragDropEvent(async ({ payload }) => {
+          if (outgoingDrag.current) return;
           if (payload.type === "over" || payload.type === "enter") {
             clearLeave();
             setHoverAction(
@@ -582,10 +629,10 @@ export default function App() {
       clean.push(
         listen("widget-opened", () => {
           interact();
-          if (latest.current.teardrop) setDockOpen(true);
+          if (latest.current.teardrop) openDock();
           setDetected(null);
         }),
-        listen("collapse-widget", collapse),
+        listen("collapse-widget", () => eventRef.current.collapse()),
       );
       clean.push(
         listen<number>("compression-progress", ({ payload }) =>
@@ -685,9 +732,12 @@ export default function App() {
         className={
           "desktop " + (s.compact ? "compact " : "") + (off ? "no-motion " : "") +
           (docked ? (showHandle ? "dock-resting" : "dock-expanded") : "") +
+          (fanCount && !showHandle ? " has-screenshot-fan" : "") +
+          (foldingFan ? " folding-fan" : "") +
           (s.motion === "Subtle" ? " subtle-motion" : "")
         }
         onDragEnter={(e) => {
+          if (outgoingDrag.current) return;
           if ((native && !windowsDrop) || !e.dataTransfer.types.includes("Files")) return;
           e.preventDefault();
           clearLeave();
@@ -700,6 +750,7 @@ export default function App() {
           setDrag(true);
         }}
         onDragOver={(e) => {
+          if (outgoingDrag.current) return;
           if ((native && !windowsDrop) || !e.dataTransfer.types.includes("Files")) return;
           e.preventDefault();
           e.dataTransfer.dropEffect = "copy";
@@ -708,6 +759,7 @@ export default function App() {
           setHoverAction(hitAction(e.clientX, e.clientY));
         }}
         onDragLeave={(e) => {
+          if (outgoingDrag.current) return;
           if ((native && !windowsDrop) || !e.dataTransfer.types.includes("Files")) return;
           if (e.relatedTarget instanceof Node && e.currentTarget.contains(e.relatedTarget)) return;
           clearLeave();
@@ -717,6 +769,7 @@ export default function App() {
           }, 180);
         }}
         onDrop={(e) => {
+          if (outgoingDrag.current) { e.preventDefault(); return; }
           if (native && !windowsDrop) return;
           e.preventDefault();
           clearLeave();
@@ -724,7 +777,7 @@ export default function App() {
           setDrag(false);
           const files = Array.from(e.dataTransfer.files);
           if (!files.length) return;
-          if (docked) setDockOpen(true);
+          if (docked) openDock();
           if (windowsDrop) {
             const host = (window as Window & { chrome?: { webview?: ExplorerWebview } }).chrome?.webview;
             try {
@@ -737,6 +790,7 @@ export default function App() {
           }
         }}
       >
+        {fanCount > 0 && !showHandle && <ScreenshotFan shots={screenshots} german={s.language === "de"} onDrag={dragScreenshot} />}
         <motion.article
           className={"widget " + (preferences ? "settings-open" : "")}
           initial={off ? false : { opacity: 0, y: 10, scale: 0.985 }}
@@ -754,7 +808,7 @@ export default function App() {
             title={t("Drop a file or click to open ClippO", "Datei ablegen oder ClippO per Klick öffnen")}
             onClick={() => {
               if (detected && !captureResult) void run([detected], undefined, true);
-              else setDockOpen(true);
+              else openDock();
             }}>
             <ChevronsDownUp className="handle-chevron" aria-hidden="true" />
             <span className="handle-message" role="status">

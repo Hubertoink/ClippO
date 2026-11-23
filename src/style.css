@@ -444,7 +444,8 @@ footer {
   justify-content: space-between;
   border-top: 1px solid var(--edge);
   background: var(--inset);
-  border-radius: 0 0 22px 22px;
+  border-bottom-left-radius: inherit;
+  border-bottom-right-radius: inherit;
   font-size: 11px;
   color: var(--muted);
 }
@@ -1036,6 +1037,8 @@ footer {
   line-height: 13px;
 }
 :root[data-native="true"] footer {
+  /* The widget clips the footer to its own inner border, in every window mode. */
+  border-radius: 0;
   height: 23px;
   min-height: 23px;
   padding: 0 12px;
@@ -1364,6 +1367,78 @@ footer {
 :root[data-native="true"] .dock-expanded .widget {
   border-radius: 0 0 16px 16px;
   transform-origin: 50% 0;
+}
+:root[data-native="true"] .has-screenshot-fan .widget {
+  z-index: 1;
+  width: min(420px, 100%);
+  margin-inline: auto;
+}
+.screenshot-fan { position: absolute; inset: 0; pointer-events: none; }
+.fan-wing {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: calc((100% - 420px) / 2);
+}
+.fan-wing.left { left: 0; --direction: 1; }
+.fan-wing.right { right: 0; --direction: -1; }
+.fan-card {
+  --offset: calc(12px + var(--layer) * min(78px, 21%));
+  --angle: calc(var(--direction) * (7deg + var(--layer) * 12deg));
+  --folded: translate(calc(var(--direction) * (105px + var(--layer) * 76px)), -40px) rotate(0deg) scale(.65);
+  position: absolute;
+  top: calc(88px - var(--layer) * 24px);
+  width: min(146px, 75%);
+  aspect-ratio: 1.19;
+  z-index: calc(1 + var(--layer));
+  transform: rotate(var(--angle));
+  transition: transform 170ms ease-out, box-shadow 170ms ease-out;
+  padding: 5px 5px 16px;
+  border-radius: 1px;
+  background: #faf9f5;
+  box-shadow: 0 1px 2px #201b1940, 0 3px 5px #201b191a;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+}
+.fan-wing.left .fan-card { right: var(--offset); }
+.fan-wing.right .fan-card { left: var(--offset); }
+.fan-card img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+.fan-card:focus-visible, .fan-card:active, .fan-card:hover {
+  z-index: 5;
+  transform: translateY(-4px) rotate(calc(var(--angle) * .2)) scale(1.06);
+  box-shadow: 0 5px 12px #120e244a;
+}
+.fan-card:active { cursor: grabbing; }
+.fan-card:hover { z-index: 6; }
+.desktop:not(.no-motion) .fan-card {
+  animation: fan-open 320ms cubic-bezier(.18,.77,.21,1) calc(var(--layer) * 36ms) backwards;
+}
+.desktop.folding-fan .fan-card {
+  animation: fan-close 205ms ease-in both;
+  pointer-events: none;
+}
+.desktop.subtle-motion .fan-card { animation-duration: 120ms; animation-delay: 0ms; }
+@keyframes fan-open {
+  from { transform: var(--folded); opacity: 0; }
+  to { transform: rotate(var(--angle)); opacity: 1; }
+}
+@keyframes fan-close {
+  to { transform: var(--folded); opacity: 0; }
+}
+.no-motion .fan-card { transition: none; }
+@media (max-width: 470px) {
+  :root[data-native="true"] .has-screenshot-fan .widget { height: calc(100dvh - 138px); }
+  .screenshot-fan { top: auto; height: 138px; }
+  .fan-wing { width: 50%; }
+  .fan-card { top: calc(38px - var(--layer) * 10px); width: min(90px, 44%); padding: 3px 3px 9px; }
 }
 .dock-expanded:not(.no-motion) .widget {
   animation: open-from-edge 280ms cubic-bezier(.16, 1, .3, 1) both;

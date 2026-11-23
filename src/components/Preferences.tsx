@@ -50,7 +50,7 @@ export function Preferences({ s, set, close, initial, updateStatus, checkUpdates
     </div>
   );
   const toggle = (
-    key: "auto" | "watch" | "preserve" | "replace" | "compact" | "underMb" | "teardrop",
+    key: "auto" | "watch" | "preserve" | "replace" | "compact" | "underMb" | "teardrop" | "screenshotFan",
     label: string,
   ) =>
     row(
@@ -256,6 +256,7 @@ export function Preferences({ s, set, close, initial, updateStatus, checkUpdates
           <>
             {toggle("compact", t("Compact view", "Kompaktansicht"))}
             {native && toggle("teardrop", t("Top-edge teardrop", "Tropfen am oberen Bildschirmrand"))}
+            {native && toggle("screenshotFan", t("Screenshot fan in the teardrop", "Screenshot-Fächer im Tropfen"))}
             {select(
               "theme",
               {

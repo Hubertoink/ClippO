@@ -22,6 +22,7 @@ export type Settings = {
   replace: boolean;
   compact: boolean;
   teardrop: boolean;
+  screenshotFan: boolean;
   theme: "Dark" | "Light" | "System";
   motion: "Full" | "Subtle" | "Off";
   language: "en" | "de";
@@ -43,6 +44,7 @@ export const defaults: Settings = {
   replace: false,
   compact: false,
   teardrop: false,
+  screenshotFan: true,
   theme: linuxDesktop ? "System" : "Dark",
   motion: "Full",
   language: navigator.language.toLowerCase().split("-")[0] === "de" ? "de" : "en",

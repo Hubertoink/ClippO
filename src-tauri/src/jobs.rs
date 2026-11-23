@@ -76,7 +76,7 @@ fn engines(app: &AppHandle) -> AppResult<PathBuf> {
         .explain()?
         .join("resources/engines"))
 }
-fn results(app: &AppHandle) -> AppResult<PathBuf> {
+pub(crate) fn results(app: &AppHandle) -> AppResult<PathBuf> {
     let p = app.path().app_cache_dir().explain()?.join("results");
     fs::create_dir_all(&p).explain()?;
     Ok(p)
@@ -265,6 +265,11 @@ fn process(
             image::ColorType::Rgba8,
         )
         .explain()?;
+        if cfg!(target_os = "linux")
+            || !app.state::<Session>().watching.load(std::sync::atomic::Ordering::Relaxed)
+        {
+            let _ = crate::screenshot_fan::remember(&app, Some(&input));
+        }
         (input, "Screenshot".to_owned())
     };
     let digest = hash_file(&mut fs::File::open(&input).explain()?)?;

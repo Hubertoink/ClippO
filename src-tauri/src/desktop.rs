@@ -145,6 +145,7 @@ pub fn layout_widget(
     docked: bool,
     collapsed: bool,
     wide_handle: bool,
+    fan_count: usize,
     height: u32,
 ) -> AppResult<()> {
     let state = window.state::<Session>();
@@ -183,6 +184,14 @@ pub fn layout_widget(
     let area = monitor.work_area();
     let (w, h) = if collapsed {
         (if wide_handle { 100 } else { 64 }, 24)
+    } else if fan_count > 0 {
+        let available = area.size.to_logical::<u32>(monitor.scale_factor()).width;
+        let layers = fan_count.min(6).div_ceil(2) as u32;
+        if available < 420 + 2 * (120 + 38 * (layers - 1)) {
+            (420.min(available), height + 138)
+        } else {
+            ((420 + 2 * (182 + 84 * (layers - 1))).min(available), height)
+        }
     } else {
         (420, height)
     };
@@ -232,6 +241,8 @@ fn capture(app: &AppHandle, path: Option<PathBuf>) {
                 return;
             }
         }
+        // Snapshot the clipboard before the frontend starts an automatic clipboard job.
+        let _ = crate::screenshot_fan::remember(app, path.as_deref());
         let _ = app.emit(
             "capture",
             Capture {
@@ -488,6 +499,7 @@ mod tests {
         let app = tauri::Builder::default()
             .any_thread()
             .manage(Session::default())
+            .manage(std::sync::Mutex::new(crate::screenshot_fan::History::default()))
             .build(context)
             .unwrap();
         let status = app.run_return(|handle, event| {

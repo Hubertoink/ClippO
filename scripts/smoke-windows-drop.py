@@ -145,6 +145,18 @@ def exercise(page, folder, playwright, pid):
         expect(page.locator(".handle-message")).to_contain_text("%", timeout=10000)
         expect(page.locator(".widget")).to_have_css("width", "100px")
         expect(page.locator(".widget")).to_have_css("width", "64px", timeout=5000)
+        handle.click()
+        expect(page.locator(".fan-card img")).to_have_count(1)
+        expect(page.locator(".widget")).to_have_css("width", "420px")
+        page.get_by_role("button", name="Preferences", exact=True).click()
+        page.get_by_role("button", name="Appearance", exact=True).click()
+        fan = page.get_by_role("switch", name="Screenshot fan in the teardrop")
+        expect(fan).to_be_checked()
+        fan.click()
+        page.get_by_role("button", name="Back", exact=True).click()
+        expect(page.locator(".fan-card")).to_have_count(0)
+        page.get_by_role("button", name="Collapse to teardrop").click()
+        expect(handle).to_be_visible()
     client = page.context.new_cdp_session(page)
 
     def drag(event, file, x, y):

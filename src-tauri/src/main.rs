@@ -5,6 +5,7 @@ mod desktop;
 mod engine;
 mod fullscreen;
 mod jobs;
+mod screenshot_fan;
 #[cfg(target_os = "linux")]
 mod omarchy;
 #[cfg(windows)]
@@ -59,6 +60,7 @@ fn main() {
     }
     tauri::Builder::default()
         .manage(jobs::Session::default())
+        .manage(std::sync::Mutex::new(screenshot_fan::History::default()))
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             desktop::show(app)
         }))
@@ -135,6 +137,8 @@ fn main() {
             jobs::compress_clipboard,
             jobs::compress_capture,
             jobs::result_action,
+            screenshot_fan::configure_screenshot_fan,
+            screenshot_fan::drag_screenshot,
             jobs::reveal_saved,
             desktop::set_detection,
             desktop::layout_widget,

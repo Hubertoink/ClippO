@@ -14,8 +14,8 @@ Choose a package from [GitHub Releases](https://github.com/Hubertoink/ClippO/rel
 | --- | --- | --- |
 | Windows x64 | `*-setup.exe` | Run the installer for your Windows account. |
 | Windows x64, portable | `*-portable.zip` | Extract the whole archive and run `clippo.exe` next to `resources`. |
-| Omarchy Quattro / Arch Linux, x86-64 | `*.pkg.tar.zst` | Run `sudo pacman -U ./clippo-0.9.2-1-x86_64.pkg.tar.zst` and open **ClippO** in the app launcher. |
-| Ubuntu 24.04 LTS, x86-64 | `*_amd64.deb` | In the download folder, run `sudo apt install ./ClippO_0.9.2_amd64.deb`. Open **ClippO** from the application menu. |
+| Omarchy Quattro / Arch Linux, x86-64 | `*.pkg.tar.zst` | Run `sudo pacman -U ./clippo-0.10.0-1-x86_64.pkg.tar.zst` and open **ClippO** in the app launcher. |
+| Ubuntu 24.04 LTS, x86-64 | `*_amd64.deb` | In the download folder, run `sudo apt install ./ClippO_0.10.0_amd64.deb`. Open **ClippO** from the application menu. |
 
 Both Windows editions require the Microsoft Edge WebView2 Runtime. On Ubuntu, APT installs the runtime dependencies, including WebKitGTK, ImageMagick, qpdf and Ghostscript.
 
@@ -26,6 +26,7 @@ ClippO starts in German on German-language systems and in English elsewhere. Cho
 - Press **Ctrl + Shift + O** to show or hide ClippO. **Ctrl + O** opens a file picker. The tray menu can reopen or quit the app.
 - On Omarchy, click the ClippO bar icon to open its native panel. You can drop files directly on the bar icon or inside the open panel. The gear opens panel settings for the 1 MB target, metadata and save location; these preferences persist with the shell. The result is saved as a conflict-free `<name>-clippo.<ext>` beside the source. On other desktops, enable **Preferences → Appearance → Top-edge teardrop** to dock ClippO at the top center of the current screen.
 - With the top-edge teardrop collapsed, automatic clipboard compression shows the savings in the tab for 2.2 seconds. For manually detected screenshots, click **Compress?** in the tab. Click the percentage to open the result.
+- Open the teardrop to see up to six recent screenshots from this session. Hover over a photo to bring it forward, then drag it into a document or folder as a full-resolution PNG. The fan is on by default. Turn it off under **Preferences → Appearance → Screenshot fan in the teardrop** to clear its history.
 - Drop a PNG, JPEG, WebP, AVIF, HEIC or PDF to compress it. When dropping images, you can also resize or convert them. The resize preview shows the original and target width and height for each image.
 - Drop or browse for a mono or stereo WAV file to convert it locally to MP3. Choose **Save copy** to save `<name>-clippo.mp3` beside the WAV. Balanced uses a target bitrate of 192 kbit/s, Smart 256 and Maximum 96. Set a custom bitrate under **Preferences → Compression**. A file-size limit can lower the bitrate. The decoder accepts PCM WAV and 32-bit IEEE float WAV at 8–384 kHz. WAV-specific metadata is not transferred.
 - Choose **Balanced**, **Smart**, **Maximum** or **Custom**. Enable **Under 1 MB** to target 999,999 bytes. ClippO reports the actual output size when it finishes.
