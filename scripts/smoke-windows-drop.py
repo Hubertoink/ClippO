@@ -130,7 +130,7 @@ def exercise(page, folder, playwright, pid):
     expect(page.locator(".widget")).to_have_css("height", "24px")
     expect(page.locator(".widget")).to_have_css("width", "64px", timeout=5000)
     # The hosted runner has its own clipboard. Keep local runs off the user's clipboard.
-    if os.environ.get("RUNNER_ENVIRONMENT") == "github-hosted":
+    if os.environ.get("CLIPPO_TEST_CLIPBOARD") == "1":
         page.evaluate("""() => {
             const settings = JSON.parse(localStorage.getItem('clippo.preferences'));
             localStorage.setItem('clippo.preferences', JSON.stringify({...settings, auto:true}));
@@ -145,8 +145,21 @@ def exercise(page, folder, playwright, pid):
         expect(page.locator(".handle-message")).to_contain_text("%", timeout=10000)
         expect(page.locator(".widget")).to_have_css("width", "100px")
         expect(page.locator(".widget")).to_have_css("width", "64px", timeout=5000)
+        # Some capture tools supply only the registered PNG format, without a DIB.
+        # Use a second image so deduplication and real arrival in the fan are observable.
+        png = Path(__file__).resolve().parents[1] / "public/clippo.png"
+        subprocess.run(["powershell", "-NoProfile", "-STA", "-Command",
+                        "$ErrorActionPreference = 'Stop'\n"
+                        "Add-Type -AssemblyName System.Windows.Forms\n"
+                        "$data = [Windows.Forms.DataObject]::new()\n"
+                        "$png = [IO.MemoryStream]::new([IO.File]::ReadAllBytes($env:CLIPPO_TEST_PNG))\n"
+                        "$data.SetData('PNG', $false, $png)\n"
+                        "[Windows.Forms.Clipboard]::SetDataObject($data, $true)"],
+                       env={**os.environ, "CLIPPO_TEST_PNG": str(png)}, check=True)
+        expect(page.locator(".handle-message")).to_contain_text("%", timeout=20000)
+        expect(page.locator(".widget")).to_have_css("width", "64px", timeout=5000)
         handle.click()
-        expect(page.locator(".fan-card img")).to_have_count(1)
+        expect(page.locator(".fan-card img")).to_have_count(2)
         expect(page.locator(".widget")).to_have_css("width", "420px")
         page.get_by_role("button", name="Preferences", exact=True).click()
         page.get_by_role("button", name="Appearance", exact=True).click()

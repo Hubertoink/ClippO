@@ -20,7 +20,9 @@ use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, WebviewWindow};
 use windows_sys::Win32::{
     System::{
         Com::CoTaskMemFree,
-        DataExchange::{GetClipboardSequenceNumber, IsClipboardFormatAvailable},
+        DataExchange::{
+            GetClipboardSequenceNumber, IsClipboardFormatAvailable, RegisterClipboardFormatW,
+        },
     },
     UI::Shell::{FOLDERID_Screenshots, SHGetKnownFolderPath},
 };
@@ -386,6 +388,7 @@ pub fn monitor(app: &AppHandle) {
 #[cfg(windows)]
 fn monitor_clipboard(app2: AppHandle) {
     thread::spawn(move || {
+        let png = unsafe { RegisterClipboardFormatW(windows_sys::w!("PNG")) };
         let mut previous = unsafe { GetClipboardSequenceNumber() };
         loop {
             thread::sleep(Duration::from_millis(240));
@@ -402,6 +405,7 @@ fn monitor_clipboard(app2: AppHandle) {
                 IsClipboardFormatAvailable(8) != 0
                     || IsClipboardFormatAvailable(17) != 0
                     || IsClipboardFormatAvailable(2) != 0
+                    || (png != 0 && IsClipboardFormatAvailable(png) != 0)
             } {
                 capture(&app2, None)
             }
@@ -499,7 +503,9 @@ mod tests {
         let app = tauri::Builder::default()
             .any_thread()
             .manage(Session::default())
-            .manage(std::sync::Mutex::new(crate::screenshot_fan::History::default()))
+            .manage(std::sync::Mutex::new(
+                crate::screenshot_fan::History::default(),
+            ))
             .build(context)
             .unwrap();
         let status = app.run_return(|handle, event| {

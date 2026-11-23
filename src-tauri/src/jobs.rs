@@ -265,11 +265,9 @@ fn process(
             image::ColorType::Rgba8,
         )
         .explain()?;
-        if cfg!(target_os = "linux")
-            || !app.state::<Session>().watching.load(std::sync::atomic::Ordering::Relaxed)
-        {
-            let _ = crate::screenshot_fan::remember(&app, Some(&input));
-        }
+        // A screenshot pasted after startup (or after a watcher miss) still belongs
+        // in the fan. The history deduplicates the watcher's copy by pixel content.
+        let _ = crate::screenshot_fan::remember(&app, Some(&input));
         (input, "Screenshot".to_owned())
     };
     let digest = hash_file(&mut fs::File::open(&input).explain()?)?;
