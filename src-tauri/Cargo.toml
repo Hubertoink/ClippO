@@ -1,6 +1,6 @@
 [package]
 name = "clippo"
-version = "0.10.0"
+version = "0.10.1"
 edition = "2021"
 authors = ["Hubertoink <Hubertoink@users.noreply.github.com>"]
 description = "Floating image and PDF compressor for Windows and Linux"

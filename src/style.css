@@ -1417,6 +1417,7 @@ footer {
   box-shadow: 0 5px 12px #120e244a;
 }
 .fan-card:active { cursor: grabbing; }
+.fan-card[data-lifted] { visibility: hidden; }
 .fan-card:hover { z-index: 6; }
 .desktop:not(.no-motion) .fan-card {
   animation: fan-open 320ms cubic-bezier(.18,.77,.21,1) calc(var(--layer) * 36ms) backwards;

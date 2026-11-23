@@ -6,13 +6,13 @@ Ein schwebendes Desktop-Widget für Bilder, Screenshots und PDFs. Mit **Strg + U
 
 ## Starten
 
-Für Omarchy Quattro auf x86-64 lade das Arch-Paket aus den [GitHub-Releases](https://github.com/Hubertoink/ClippO/releases/latest) herunter und installiere es im Downloadordner mit `sudo pacman -U ./clippo-0.10.0-1-x86_64.pkg.tar.zst`.
+Für Omarchy Quattro auf x86-64 lade das Arch-Paket aus den [GitHub-Releases](https://github.com/Hubertoink/ClippO/releases/latest) herunter und installiere es im Downloadordner mit `sudo pacman -U ./clippo-0.10.1-1-x86_64.pkg.tar.zst`.
 
 **Omarchy / Arch Linux (x86-64)** · Installiere `base-devel` und führe im ausgecheckten Repository `cd packaging/arch && makepkg -si` als normaler Benutzer aus. Führe danach einmal `clippo-omarchy-install` aus, um das native Omarchy-Leisten-Widget zu aktivieren. Es öffnet als verankertes Quickshell-Panel, übernimmt das aktive Omarchy-Design live und bleibt beim Workspace-Wechsel verfügbar. App-Launcher und `clippo panel` schalten dasselbe Panel um.
 
 Die Sprache folgt beim ersten Start der Systemsprache. Unter **Einstellungen → Allgemein → Sprache** kannst du zwischen Deutsch und Englisch wechseln.
 
-Für Ubuntu 24.04 auf x86-64 lade die Datei `ClippO_0.10.0_amd64.deb` aus den [GitHub-Releases](https://github.com/Hubertoink/ClippO/releases/latest) herunter. Führe im Downloadordner `sudo apt install ./ClippO_0.10.0_amd64.deb` aus und starte ClippO über das Anwendungsmenü. Das Paket nutzt ImageMagick, qpdf und Ghostscript aus den Ubuntu-Paketquellen. **Strg + V** verarbeitet ein kopiertes Bild oder eine Datei. Die Ordnererkennung überwacht den Unterordner `Screenshots` im Bilderverzeichnis. Die automatische Zwischenablageerkennung und die Outlook-/Teams-Aktionen stehen unter Windows bereit. Tastenkürzel und Fensterpositionierung hängen unter Linux von der Desktop-Sitzung ab.
+Für Ubuntu 24.04 auf x86-64 lade die Datei `ClippO_0.10.1_amd64.deb` aus den [GitHub-Releases](https://github.com/Hubertoink/ClippO/releases/latest) herunter. Führe im Downloadordner `sudo apt install ./ClippO_0.10.1_amd64.deb` aus und starte ClippO über das Anwendungsmenü. Das Paket nutzt ImageMagick, qpdf und Ghostscript aus den Ubuntu-Paketquellen. **Strg + V** verarbeitet ein kopiertes Bild oder eine Datei. Die Ordnererkennung überwacht den Unterordner `Screenshots` im Bilderverzeichnis. Die automatische Zwischenablageerkennung und die Outlook-/Teams-Aktionen stehen unter Windows bereit. Tastenkürzel und Fensterpositionierung hängen unter Linux von der Desktop-Sitzung ab.
 
 Den Windows-x64-Installer findest du unter [GitHub Releases](https://github.com/Hubertoink/ClippO/releases/latest). Ab Version 0.3.2 enthält das Setup kein WebView2-Installationspaket und installiert die Laufzeit nicht nach. Die Microsoft WebView2 Runtime muss bereits auf dem Rechner vorhanden sein; das gilt auch für die portable ZIP. Ein neuer Release-Build schreibt den Installer nach `src-tauri/target/release/bundle/nsis/`. Das Widget erscheint am Bildschirmrand. Schließen oder die Minus-Schaltfläche blendet es aus. Über das Tray-Symbol lässt es sich wieder öffnen oder vollständig beenden.
 

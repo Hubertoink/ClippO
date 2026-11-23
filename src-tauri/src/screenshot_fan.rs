@@ -2,7 +2,7 @@ use crate::engine::{AppResult, Explain};
 use arboard::Clipboard;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use image::{DynamicImage, ImageFormat, RgbaImage};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
@@ -26,7 +26,6 @@ struct Entry {
     preview: Preview,
     digest: u64,
     file: PathBuf,
-    icon: Vec<u8>,
     _directory: TempDir,
 }
 
@@ -128,7 +127,6 @@ pub fn remember(app: &AppHandle, path: Option<&Path>) -> AppResult<()> {
             preview,
             digest,
             file,
-            icon,
             _directory: directory,
         }),
     );
@@ -137,9 +135,19 @@ pub fn remember(app: &AppHandle, path: Option<&Path>) -> AppResult<()> {
         .explain()
 }
 
+#[derive(Deserialize)]
+pub struct CardDragImage {
+    png: String,
+    x: i32,
+    y: i32,
+}
+
+#[cfg(windows)]
+mod windows_drag;
+
 // A synchronous Tauri command runs on the UI thread, where OLE/GTK own the drag loop.
 #[tauri::command]
-pub fn drag_screenshot(window: WebviewWindow, id: u64) -> AppResult<()> {
+pub fn drag_screenshot(window: WebviewWindow, id: u64, image: CardDragImage) -> AppResult<()> {
     let state = window.state::<Mutex<History>>();
     let entry = state
         .lock()
@@ -149,23 +157,65 @@ pub fn drag_screenshot(window: WebviewWindow, id: u64) -> AppResult<()> {
         .find(|e| e.preview.id == id)
         .cloned()
         .ok_or("Screenshot unavailable")?;
+    if image.png.len() > 6_000_000 {
+        return Err("Drag image too large".into());
+    }
+    let bytes = STANDARD.decode(image.png).explain()?;
+    let (width, height) = image::ImageReader::with_format(Cursor::new(&bytes), ImageFormat::Png)
+        .into_dimensions()
+        .explain()?;
+    if width == 0 || height == 0 || width > 1024 || height > 1024 {
+        return Err("Invalid drag image dimensions".into());
+    }
+    let x = image.x.clamp(0, width as i32 - 1);
+    let y = image.y.clamp(0, height as i32 - 1);
+    #[cfg(windows)]
+    {
+        let pixels = image::load_from_memory_with_format(&bytes, ImageFormat::Png)
+            .explain()?
+            .into_rgba8();
+        let mut transparent = Cursor::new(Vec::new());
+        RgbaImage::new(1, 1)
+            .write_to(&mut transparent, ImageFormat::Png)
+            .explain()?;
+        let card = windows_drag::LiftedCard::show(pixels, x, y).explain()?;
+        let result = drag::start_drag(
+            &window,
+            drag::DragItem::Files(vec![entry.file.clone()]),
+            drag::Image::Raw(transparent.into_inner()),
+            |_, _| {},
+            drag::Options::default(),
+        );
+        drop(card);
+        result.explain()?;
+        window.emit("screenshot-drag-ended", ()).explain()
+    }
     #[cfg(target_os = "linux")]
-    let gtk_window = window.gtk_window().explain()?;
-    #[cfg(target_os = "linux")]
-    let handle = &gtk_window;
-    #[cfg(not(target_os = "linux"))]
-    let handle = &window;
-    let finished = window.clone();
-    drag::start_drag(
-        handle,
-        drag::DragItem::Files(vec![entry.file.clone()]),
-        drag::Image::Raw(entry.icon.clone()),
-        move |_, _| {
-            // Retain the full image if it rolls out of history during a drag.
-            let _keep_alive = &entry;
-            let _ = finished.emit("screenshot-drag-ended", ());
-        },
-        drag::Options::default(),
-    )
-    .explain()
+    {
+        use gtk::prelude::*;
+        use std::{cell::RefCell, rc::Rc};
+        let handle = window.gtk_window().explain()?;
+        let icon = gtk::gdk_pixbuf::Pixbuf::from_read(Cursor::new(bytes.clone())).explain()?;
+        // GTK creates the context synchronously at drag-begin. Use it to anchor
+        // the icon at the original grip after drag-rs sets its default icon.
+        let context = Rc::new(RefCell::new(None));
+        let started = context.clone();
+        let handler =
+            handle.connect_drag_begin(move |_, ctx| *started.borrow_mut() = Some(ctx.clone()));
+        let result = drag::start_drag(
+            &handle,
+            drag::DragItem::Files(vec![entry.file.clone()]),
+            drag::Image::Raw(bytes),
+            move |_, _| {
+                let _keep_alive = &entry;
+                let _ = window.emit("screenshot-drag-ended", ());
+            },
+            drag::Options::default(),
+        );
+        handle.disconnect(handler);
+        if let Some(ctx) = context.take() {
+            ctx.drag_set_icon_pixbuf(&icon, x, y);
+        }
+        result.explain()
+    }
 }

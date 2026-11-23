@@ -41,7 +41,7 @@ import { Button } from "./components/ui";
 import { ResizeDimensions } from "./components/ResizeDimensions";
 import { UpdateNotice, useUpdateCheck } from "./components/UpdateNotice";
 import { Preferences } from "./components/Preferences";
-import { ScreenshotFan, type Screenshot } from "./components/ScreenshotFan";
+import { ScreenshotFan, type Screenshot, type CardDragImage } from "./components/ScreenshotFan";
 import { followOmarchyTheme } from "./lib/omarchy";
 import {
   estimated,
@@ -158,6 +158,7 @@ export default function App() {
   const docked = native && s.teardrop;
   const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
   const outgoingDrag = useRef(false);
+  const [draggedScreenshot, setDraggedScreenshot] = useState<number | null>(null);
   const fanEnabled = docked && s.screenshotFan;
   const fanCount = fanEnabled && dockOpen && !preferences && !shortcuts && !edit ? screenshots.length : 0;
   const collapsed = docked && !(dockOpen || drag || (busy && !quietJob) || preferences || edit || shortcuts);
@@ -216,11 +217,16 @@ export default function App() {
   };
   const caught = (e: unknown) =>
     message(e instanceof Error ? e.message : String(e), true);
-  const dragScreenshot = (id: number) => {
+  const finishScreenshotDrag = () => {
+    outgoingDrag.current = false;
+    setDraggedScreenshot(null);
+  };
+  const dragScreenshot = (id: number, image: CardDragImage) => {
     if (outgoingDrag.current) return;
     outgoingDrag.current = true;
-    void invoke("drag_screenshot", { id }).catch(error => {
-      outgoingDrag.current = false;
+    setDraggedScreenshot(id);
+    void invoke("drag_screenshot", { id, image }).catch(error => {
+      finishScreenshotDrag();
       caught(error);
     });
   };
@@ -533,7 +539,7 @@ export default function App() {
     window.addEventListener("keydown", key);
     window.addEventListener("paste", onPaste);
     if (native) {
-      clean.push(listen("screenshot-drag-ended", () => { outgoingDrag.current = false; }));
+      clean.push(listen("screenshot-drag-ended", finishScreenshotDrag));
       if (windowsDrop) {
         clean.push(
           listen<{ paths: string[]; action: DropAction }>("windows-file-drop", ({ payload }) => {
@@ -790,7 +796,7 @@ export default function App() {
           }
         }}
       >
-        {fanCount > 0 && !showHandle && <ScreenshotFan shots={screenshots} german={s.language === "de"} onDrag={dragScreenshot} />}
+        {fanCount > 0 && !showHandle && <ScreenshotFan shots={screenshots} german={s.language === "de"} dragging={draggedScreenshot} onDrag={dragScreenshot} />}
         <motion.article
           className={"widget " + (preferences ? "settings-open" : "")}
           initial={off ? false : { opacity: 0, y: 10, scale: 0.985 }}
