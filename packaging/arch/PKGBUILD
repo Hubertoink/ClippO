@@ -1,6 +1,6 @@
 # Build from this checkout with "makepkg -si" in packaging/arch.
 pkgname=clippo
-pkgver=0.10.2
+pkgver=0.10.3
 pkgrel=1
 pkgdesc='Floating desktop widget for local image, PDF and audio compression'
 arch=('x86_64')

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "hubertoink.clippo",
   "name": "ClippO",
-  "version": "0.10.2",
+  "version": "0.10.3",
   "author": "Hubertoink",
   "description": "Bilder, PDFs und WAV-Audio lokal komprimieren",
   "kinds": ["bar-widget"],

@@ -41,6 +41,14 @@ impl History {
     fn previews(&self) -> Vec<Preview> {
         self.entries.iter().map(|e| e.preview.clone()).collect()
     }
+
+    fn entry(&self, id: u64) -> AppResult<Arc<Entry>> {
+        self.entries
+            .iter()
+            .find(|entry| entry.preview.id == id)
+            .cloned()
+            .ok_or_else(|| "Screenshot unavailable".into())
+    }
 }
 
 #[tauri::command]
@@ -55,6 +63,16 @@ pub fn configure_screenshot_fan(app: AppHandle, enabled: bool) -> AppResult<Vec<
         }
     }
     Ok(history.previews())
+}
+
+#[tauri::command]
+pub async fn open_screenshot(app: AppHandle, id: u64) -> AppResult<()> {
+    let entry = app.state::<Mutex<History>>().lock().explain()?.entry(id)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        tauri_plugin_opener::open_path(&entry.file, None::<&str>).explain()
+    })
+    .await
+    .explain()?
 }
 
 pub fn remember(app: &AppHandle, path: Option<&Path>) -> AppResult<()> {
@@ -149,14 +167,7 @@ mod windows_drag;
 #[tauri::command]
 pub fn drag_screenshot(window: WebviewWindow, id: u64, image: CardDragImage) -> AppResult<()> {
     let state = window.state::<Mutex<History>>();
-    let entry = state
-        .lock()
-        .explain()?
-        .entries
-        .iter()
-        .find(|e| e.preview.id == id)
-        .cloned()
-        .ok_or("Screenshot unavailable")?;
+    let entry = state.lock().explain()?.entry(id)?;
     if image.png.len() > 6_000_000 {
         return Err("Drag image too large".into());
     }

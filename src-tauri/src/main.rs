@@ -138,6 +138,7 @@ fn main() {
             jobs::compress_capture,
             jobs::result_action,
             screenshot_fan::configure_screenshot_fan,
+            screenshot_fan::open_screenshot,
             screenshot_fan::drag_screenshot,
             jobs::reveal_saved,
             desktop::set_detection,

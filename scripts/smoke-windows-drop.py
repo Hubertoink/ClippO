@@ -97,6 +97,36 @@ def exercise_fullscreen(playwright, pid):
         gdi.DeleteObject(region)
 
 
+def exercise_fan_click(page):
+    # Keep the smoke test independent of the runner's default image viewer.
+    page.evaluate("""() => {
+        const fetch = window.fetch;
+        window.fanCommands = [];
+        window.fetch = (url, init) => {
+            const command = /\\/(open_screenshot|drag_screenshot)$/.exec(String(url));
+            if (command) {
+                window.fanCommands.push({cmd: command[1], id: JSON.parse(init.body).id});
+                return Promise.resolve(new Response('null', {
+                    headers: {'Tauri-Response': 'ok', 'Content-Type': 'application/json'}
+                }));
+            }
+            return fetch(url, init);
+        };
+    }""")
+    card = page.locator(".fan-card").first
+    card.click()
+    card.press("Enter")
+    box = card.bounding_box()
+    x, y = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+    page.mouse.move(x, y)
+    page.mouse.down()
+    page.mouse.move(x + 12, y)
+    page.mouse.up()
+    commands = page.evaluate("window.fanCommands")
+    assert [c["cmd"] for c in commands] == ["open_screenshot", "open_screenshot", "drag_screenshot"], commands
+    assert len({c["id"] for c in commands}) == 1
+
+
 def exercise(page, folder, playwright, pid):
     page.locator(".widget").wait_for()
     page.evaluate("""localStorage.setItem('clippo.preferences', JSON.stringify({
@@ -183,6 +213,7 @@ def exercise(page, folder, playwright, pid):
         handle.click()
         expect(page.locator(".fan-card img")).to_have_count(2)
         expect(page.locator(".widget")).to_have_css("width", "420px")
+        exercise_fan_click(page)
         page.get_by_role("button", name="Preferences", exact=True).click()
         page.get_by_role("button", name="Appearance", exact=True).click()
         fan = page.get_by_role("switch", name="Screenshot fan in the teardrop")

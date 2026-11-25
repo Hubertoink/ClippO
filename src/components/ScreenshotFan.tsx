@@ -42,10 +42,11 @@ function liftCard(card: HTMLElement, gripX: number, gripY: number): CardDragImag
   return { png: canvas.toDataURL("image/png").split(",")[1], x: Math.round(grip.x), y: Math.round(grip.y) };
 }
 
-export function ScreenshotFan({ shots, german, dragging, onDrag }: {
+export function ScreenshotFan({ shots, german, dragging, onOpen, onDrag }: {
   shots: Screenshot[];
   german: boolean;
   dragging: number | null;
+  onOpen: (id: number) => void;
   onDrag: (id: number, image: CardDragImage) => void;
 }) {
   const origin = useRef<{ x: number; y: number; gripX: number; gripY: number; pointer: number } | null>(null);
@@ -54,10 +55,10 @@ export function ScreenshotFan({ shots, german, dragging, onDrag }: {
       {["left", "right"].map((side, parity) => (
         <div className={"fan-wing " + side} key={side}>
           {shots.filter((_, i) => i % 2 === parity).map((shot, layer) => (
-            <div className="fan-card" key={shot.id} tabIndex={0}
+            <button type="button" className="fan-card" key={shot.id}
               data-lifted={dragging === shot.id || undefined}
               style={{ "--layer": layer } as CSSProperties}
-              title={shot.name + (german ? " · Zum Einfügen ziehen" : " · Drag to insert")}
+              title={shot.name + (german ? " · Klicken zum Öffnen, ziehen zum Einfügen" : " · Click to open, drag to insert")}
               onPointerDown={e => {
                 if (!e.isPrimary || e.button !== 0) return;
                 e.preventDefault();
@@ -75,9 +76,18 @@ export function ScreenshotFan({ shots, german, dragging, onDrag }: {
                 const image = liftCard(e.currentTarget, start.gripX, start.gripY);
                 if (image) onDrag(shot.id, image);
               }}
-              onLostPointerCapture={() => { origin.current = null; }}>
+              onPointerUp={e => {
+                const start = origin.current;
+                if (!start || start.pointer !== e.pointerId || e.button !== 0) return;
+                origin.current = null;
+                if (Math.hypot(e.clientX - start.x, e.clientY - start.y) < 5) onOpen(shot.id);
+              }}
+              onClick={e => { if (e.detail === 0) onOpen(shot.id); }}
+              onLostPointerCapture={e => {
+                if (origin.current?.pointer === e.pointerId) origin.current = null;
+              }}>
               <img src={shot.thumbnail} alt={shot.name} draggable={false} />
-            </div>
+            </button>
           ))}
         </div>
       ))}

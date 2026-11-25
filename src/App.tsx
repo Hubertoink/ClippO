@@ -230,6 +230,9 @@ export default function App() {
       caught(error);
     });
   };
+  const openScreenshot = (id: number) => {
+    if (!outgoingDrag.current) void invoke("open_screenshot", { id }).catch(caught);
+  };
   useEffect(() => {
     if (!native) return;
     let active = true;
@@ -804,7 +807,7 @@ export default function App() {
           }
         }}
       >
-        {fanCount > 0 && !showHandle && <ScreenshotFan shots={screenshots} german={s.language === "de"} dragging={draggedScreenshot} onDrag={dragScreenshot} />}
+        {fanCount > 0 && !showHandle && <ScreenshotFan shots={screenshots} german={s.language === "de"} dragging={draggedScreenshot} onOpen={openScreenshot} onDrag={dragScreenshot} />}
         <motion.article
           className={"widget " + (preferences ? "settings-open" : "")}
           initial={off ? false : { opacity: 0, y: 10, scale: 0.985 }}

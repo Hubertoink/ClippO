@@ -1,14 +1,14 @@
 use std::{mem::size_of, ptr::null_mut};
 use tauri::WebviewWindow;
 use windows_sys::Win32::{
-    Foundation::{POINT, RECT},
+    Foundation::{HWND, POINT, RECT},
     Graphics::Gdi::{
         ClientToScreen, CreateRectRgn, DeleteObject, GetMonitorInfoW, MonitorFromWindow,
-        SetWindowRgn, MONITORINFO, MONITOR_DEFAULTTONEAREST,
+        SetWindowRgn, MONITORINFO, MONITOR_DEFAULTTONEAREST, MONITOR_DEFAULTTONULL,
     },
     UI::WindowsAndMessaging::{
-        GetAncestor, GetClassNameW, GetClientRect, GetDesktopWindow, GetShellWindow,
-        GetWindowLongW, IsZoomed, WindowFromPoint, GA_ROOT, GWL_STYLE, WS_CAPTION,
+        GetAncestor, GetClassNameW, GetClientRect, GetDesktopWindow, GetForegroundWindow,
+        GetShellWindow, GetWindowLongW, IsZoomed, WindowFromPoint, GA_ROOT, GWL_STYLE, WS_CAPTION,
     },
 };
 
@@ -32,26 +32,22 @@ impl Probe {
                 return false;
             }
             let screen = info.rcMonitor;
-            // Sample the visible application on this display, even if the user
-            // is working on a different monitor. The resting drop is at the edge.
-            let point = POINT {
-                x: screen.left + (screen.right - screen.left) / 2,
-                y: screen.top + (screen.bottom - screen.top) / 2,
-            };
-            let app = GetAncestor(WindowFromPoint(point), GA_ROOT);
-            if app.is_null()
-                || app == hwnd.0.cast()
-                || app == GetDesktopWindow()
-                || app == GetShellWindow()
+            let foreground = GetAncestor(GetForegroundWindow(), GA_ROOT);
+            // A smaller foreground window can leave the fullscreen window
+            // underneath it at the center of this display.
+            let app = if is_application(foreground, hwnd.0.cast())
+                && MonitorFromWindow(foreground, MONITOR_DEFAULTTONULL) == monitor
             {
-                return false;
-            }
-            let mut class = [0u16; 64];
-            let n = GetClassNameW(app, class.as_mut_ptr(), class.len() as i32);
-            if matches!(
-                String::from_utf16_lossy(&class[..n as usize]).as_str(),
-                "WorkerW" | "Progman" | "Shell_TrayWnd" | "Shell_SecondaryTrayWnd"
-            ) {
+                foreground
+            } else {
+                // The user may be working on a different display.
+                let point = POINT {
+                    x: screen.left + (screen.right - screen.left) / 2,
+                    y: screen.top + (screen.bottom - screen.top) / 2,
+                };
+                GetAncestor(WindowFromPoint(point), GA_ROOT)
+            };
+            if !is_application(app, hwnd.0.cast()) {
                 return false;
             }
             // Maximized, captioned windows can cover a display with no taskbar.
@@ -70,6 +66,18 @@ impl Probe {
                 && origin.y + client.bottom >= screen.bottom
         }
     }
+}
+
+unsafe fn is_application(hwnd: HWND, widget: HWND) -> bool {
+    if hwnd.is_null() || hwnd == widget || hwnd == GetDesktopWindow() || hwnd == GetShellWindow() {
+        return false;
+    }
+    let mut class = [0u16; 64];
+    let n = GetClassNameW(hwnd, class.as_mut_ptr(), class.len() as i32);
+    !matches!(
+        String::from_utf16_lossy(&class[..n as usize]).as_str(),
+        "WorkerW" | "Progman" | "Shell_TrayWnd" | "Shell_SecondaryTrayWnd"
+    )
 }
 
 pub fn set_mask(window: &WebviewWindow, hidden: bool) -> bool {
