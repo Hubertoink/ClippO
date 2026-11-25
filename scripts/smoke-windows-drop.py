@@ -102,6 +102,7 @@ def exercise_fan_click(page):
     page.evaluate("""() => {
         const fetch = window.fetch;
         window.fanCommands = [];
+        window.restoreFanFetch = () => { window.fetch = fetch; };
         window.fetch = (url, init) => {
             const command = /\\/(open_screenshot|drag_screenshot)$/.exec(String(url));
             if (command) {
@@ -122,7 +123,13 @@ def exercise_fan_click(page):
     page.mouse.down()
     page.mouse.move(x + 12, y)
     page.mouse.up()
-    commands = page.evaluate("window.fanCommands")
+    commands = page.evaluate("""async () => {
+        window.restoreFanFetch();
+        await window.__TAURI_INTERNALS__.invoke('plugin:event|emit', {
+            event: 'screenshot-drag-ended', payload: null
+        });
+        return window.fanCommands;
+    }""")
     assert [c["cmd"] for c in commands] == ["open_screenshot", "open_screenshot", "drag_screenshot"], commands
     assert len({c["id"] for c in commands}) == 1
 
